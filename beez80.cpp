@@ -168,6 +168,34 @@ int BeeZ80::runinstruction()
     return executenextopcode(getOpcode());
 }
 
+void BeeZ80::debugoutput(bool printdisassembly)
+{
+    cout << "AF: " << hex << (int)af.getreg() << endl;
+    cout << "BC: " << hex << (int)bc.getreg() << endl;
+    cout << "DE: " << hex << (int)de.getreg() << endl;
+    cout << "HL: " << hex << (int)hl.getreg() << endl;
+
+    cout << "IX: " << hex << (int)ix.getreg() << endl;
+    cout << "IY: " << hex << (int)iy.getreg() << endl;
+
+    cout << "AF2: " << hex << (int)(afs.getreg()) << endl;
+    cout << "BC2: " << hex << (int)(bcs.getreg()) << endl;
+    cout << "DE2: " << hex << (int)(des.getreg()) << endl;
+    cout << "HL2: " << hex << (int)(hls.getreg()) << endl;
+
+    cout << "PC: " << hex << (int)pc << endl;
+    cout << "SP: " << hex << (int)sp << endl;
+    cout << "Interrupt: " << hex << (int)interrupt << endl;
+    cout << "Refresh: " << hex << (int)refresh << endl;
+
+    if (printdisassembly)
+    {
+	cout << "Current instruction: " << disassembleinstr(pc) << endl;
+    }
+
+    cout << endl;
+}
+
 // Reads an 8-bit value from memory at address of "addr"
 uint8_t BeeZ80::readByte(uint16_t addr)
 {
@@ -638,6 +666,147 @@ void BeeZ80::logical_and(uint8_t val)
     af.sethi(res);
 }
 
+string BeeZ80::disassembleinstr(uint16_t addr)
+{
+    stringstream instr;
+
+    uint8_t opcode = readByte(addr);
+
+    uint16_t pc_val = (addr + 1);
+    uint8_t imm_byte = readByte(pc_val);
+    uint16_t imm_word = readWord(pc_val);
+
+    switch (opcode)
+    {
+	case 0x00: instr << "NOP"; break;
+	case 0x08: instr << "EX AF, AF'"; break;
+	case 0x0E: instr << "LD C, " << hex << (int)imm_byte; break;
+	case 0x21: instr << "LD HL, " << hex << (int)imm_word; break;
+	case 0x31: instr << "LD SP, " << hex << (int)imm_word; break;
+	case 0x3A: instr << "LD A, (" << hex << (int)imm_word << ")"; break;
+	case 0x3E: instr << "LD A, " << hex << (int)imm_byte; break;
+	case 0x40: instr << "LD B, B"; break;
+	case 0x41: instr << "LD B, C"; break;
+	case 0x42: instr << "LD B, D"; break;
+	case 0x43: instr << "LD B, E"; break;
+	case 0x44: instr << "LD B, H"; break;
+	case 0x45: instr << "LD B, L"; break;
+	case 0x46: instr << "LD B, (HL)"; break;
+	case 0x47: instr << "LD B, A"; break;
+	case 0x48: instr << "LD C, B"; break;
+	case 0x49: instr << "LD C, C"; break;
+	case 0x4A: instr << "LD C, D"; break;
+	case 0x4B: instr << "LD C, E"; break;
+	case 0x4C: instr << "LD C, H"; break;
+	case 0x4D: instr << "LD C, L"; break;
+	case 0x4E: instr << "LD C, (HL)"; break;
+	case 0x4F: instr << "LD C, A"; break;
+	case 0x50: instr << "LD D, B"; break;
+	case 0x51: instr << "LD D, C"; break;
+	case 0x52: instr << "LD D, D"; break;
+	case 0x53: instr << "LD D, E"; break;
+	case 0x54: instr << "LD D, H"; break;
+	case 0x55: instr << "LD D, L"; break;
+	case 0x56: instr << "LD D, (HL)"; break;
+	case 0x57: instr << "LD D, A"; break;
+	case 0x58: instr << "LD E, B"; break;
+	case 0x59: instr << "LD E, C"; break;
+	case 0x5A: instr << "LD E, D"; break;
+	case 0x5B: instr << "LD E, E"; break;
+	case 0x5C: instr << "LD E, H"; break;
+	case 0x5D: instr << "LD E, L"; break;
+	case 0x5E: instr << "LD E, (HL)"; break;
+	case 0x5F: instr << "LD E, A"; break;
+	case 0x60: instr << "LD H, B"; break;
+	case 0x61: instr << "LD H, C"; break;
+	case 0x62: instr << "LD H, D"; break;
+	case 0x63: instr << "LD H, E"; break;
+	case 0x64: instr << "LD H, H"; break;
+	case 0x65: instr << "LD H, L"; break;
+	case 0x66: instr << "LD H, (HL)"; break;
+	case 0x67: instr << "LD H, A"; break;
+	case 0x68: instr << "LD L, B"; break;
+	case 0x69: instr << "LD L, C"; break;
+	case 0x6A: instr << "LD L, D"; break;
+	case 0x6B: instr << "LD L, E"; break;
+	case 0x6C: instr << "LD L, H"; break;
+	case 0x6D: instr << "LD L, L"; break;
+	case 0x6E: instr << "LD L, (HL)"; break;
+	case 0x6F: instr << "LD L, A"; break;
+	case 0x70: instr << "LD (HL), B"; break;
+	case 0x71: instr << "LD (HL), C"; break;
+	case 0x72: instr << "LD (HL), D"; break;
+	case 0x73: instr << "LD (HL), E"; break;
+	case 0x74: instr << "LD (HL), H"; break;
+	case 0x75: instr << "LD (HL), L"; break;
+	case 0x77: instr << "LD (HL), A"; break;
+	case 0x78: instr << "LD A, B"; break;
+	case 0x79: instr << "LD A, C"; break;
+	case 0x7A: instr << "LD A, D"; break;
+	case 0x7B: instr << "LD A, E"; break;
+	case 0x7C: instr << "LD A, H"; break;
+	case 0x7D: instr << "LD A, L"; break;
+	case 0x7E: instr << "LD A, (HL)"; break;
+	case 0x7F: instr << "LD A, A"; break;
+	case 0xA0: instr << "AND B"; break;
+	case 0xA1: instr << "AND C"; break;
+	case 0xA2: instr << "AND D"; break;
+	case 0xA3: instr << "AND E"; break;
+	case 0xA4: instr << "AND H"; break;
+	case 0xA5: instr << "AND L"; break;
+	case 0xA6: instr << "AND (HL)"; break;
+	case 0xA7: instr << "AND A"; break;
+	case 0xC1: instr << "POP BC"; break;
+	case 0xC2: instr << "JP NZ, " << hex << (int)imm_word; break;
+	case 0xC3: instr << "JP " << hex << (int)imm_word; break;
+	case 0xC4: instr << "CALL NZ, " << hex << (int)imm_word; break;
+	case 0xC5: instr << "PUSH BC"; break;
+	case 0xC9: instr << "RET"; break;
+	case 0xCA: instr << "JP Z, " << hex << (int)imm_word; break;
+	case 0xCC: instr << "CALL Z, " << hex << (int)imm_word; break;
+	case 0xCD: instr << "CALL " << hex << (int)imm_word; break;
+	case 0xD1: instr << "POP DE"; break;
+	case 0xD3: instr << "OUT " << hex << (int)imm_byte << ", A"; break;
+	case 0xD5: instr << "PUSH DE"; break;
+	case 0xD9: instr << "EXX"; break;
+	case 0xDB: instr << "IN A, " << hex << (int)imm_byte; break;
+	case 0xDD: instr << dissassembleindexinstr(pc_val, false); break;
+	case 0xE1: instr << "POP HL"; break;
+	case 0xE5: instr << "PUSH HL"; break;
+	case 0xE6: instr << "AND " << hex << (int)imm_byte; break;
+	case 0xEB: instr << "EX DE, HL"; break;
+	case 0xF1: instr << "POP AF"; break;
+	case 0xF5: instr << "PUSH AF"; break;
+	case 0xFD: instr << dissassembleindexinstr(pc_val, true); break;
+	case 0xFE: instr << "CP " << hex << (int)imm_byte; break;
+	default: instr << "unknown"; break;
+    }
+
+    return instr.str();
+}
+
+string BeeZ80::dissassembleindexinstr(uint16_t addr, bool is_fd)
+{
+    stringstream instr;
+
+    string index_reg = (is_fd) ? "IY" : "IX";
+
+    uint8_t opcode = readByte(addr);
+
+    uint16_t pc_val = (addr + 1);
+    uint8_t imm_byte = readByte(pc_val);
+    uint16_t imm_word = readWord(pc_val);
+
+    switch (opcode)
+    {
+	case 0xE1: instr << "POP " << index_reg; break;
+	case 0xE5: instr << "PUSH " << index_reg; break;
+	default: instr << "unknown " << index_reg << ", " << hex << (int)opcode; break;
+    }
+
+    return instr.str();
+}
+
 // Emulates the individual Zilog Z80 instructions
 int BeeZ80::executenextopcode(uint8_t opcode)
 {
@@ -649,6 +818,7 @@ int BeeZ80::executenextopcode(uint8_t opcode)
 	case 0x0E: bc.setlo(getimmByte()); cycle_count = 7; break; // LD C, imm8
 	case 0x21: hl.setreg(getimmWord()); cycle_count = 10; break; // LD HL, imm16
 	case 0x31: sp = getimmWord(); cycle_count = 10; break; // LD SP, imm16
+	case 0x3A: af.sethi(readByte(getimmWord())); cycle_count = 13; break; // LD A, (imm16)
 	case 0x3E: af.sethi(getimmByte()); cycle_count = 7; break; // LD A, imm8
 	case 0x40: bc.sethi(bc.gethi()); cycle_count = 4; break; // LD B, B
 	case 0x41: bc.sethi(bc.getlo()); cycle_count = 4; break; // LD B, C
@@ -721,10 +891,11 @@ int BeeZ80::executenextopcode(uint8_t opcode)
 	case 0xA5: logical_and(hl.getlo()); cycle_count = 4; break; // AND L
 	case 0xA6: logical_and(readByte(hl.getreg())); cycle_count = 7; break; // AND (HL)
 	case 0xA7: logical_and(af.gethi()); cycle_count = 4; break; // AND A
-	case 0xC1: bc.setreg(pop_stack()); cycle_count = 10; break; // POP DE
-	case 0xC2: cycle_count = jump(getimmWord(), !iszero()); break; // JP Z, imm16
+	case 0xC1: bc.setreg(pop_stack()); cycle_count = 10; break; // POP BC
+	case 0xC2: cycle_count = jump(getimmWord(), !iszero()); break; // JP NZ, imm16
 	case 0xC3: cycle_count = jump(getimmWord()); break; // JP imm16
 	case 0xC4: cycle_count = call(!iszero()); break; // CALL NZ, imm16
+	case 0xC5: cycle_count = push_stack(bc.getreg()); break; // PUSH BC
 	case 0xC9: cycle_count = ret(); break; // RET
 	case 0xCA: cycle_count = jump(getimmWord(), iszero()); break; // JP Z, imm16
 	case 0xCC: cycle_count = call(iszero()); break; // CALL Z, imm16
@@ -734,13 +905,34 @@ int BeeZ80::executenextopcode(uint8_t opcode)
 	case 0xD5: cycle_count = push_stack(de.getreg()); break; // PUSH DE
 	case 0xD9: cycle_count = exx(); break; // EXX
 	case 0xDB: af.sethi(portIn(getimmByte())); cycle_count = 11; break; // IN A, imm8
+	case 0xDD: cycle_count = executenextindexopcode(getOpcode(), false); break;
 	case 0xE1: hl.setreg(pop_stack()); cycle_count = 10; break; // POP HL
+	case 0xE5: cycle_count = push_stack(hl.getreg()); break; // PUSH HL
 	case 0xE6: logical_and(getimmByte()); cycle_count = 7; break; // AND imm8
 	case 0xEB: cycle_count = ex_de_hl(); break; // EX DE, HL
 	case 0xF1: af.setreg(pop_stack()); cycle_count = 10; break; // POP AF
 	case 0xF5: cycle_count = push_stack(af.getreg()); break; // PUSH AF
+	case 0xFD: cycle_count = executenextindexopcode(getOpcode(), true); break;
 	case 0xFE: arith_cmp(getimmByte()); cycle_count = 7; break; // CP imm8
 	default: unrecognizedopcode(opcode); cycle_count = 0; break;
+    }
+
+    return cycle_count;
+}
+
+// Emulates the Zilog Z80's DD/FD-prefix instruction (IX/IY instructions)
+int BeeZ80::executenextindexopcode(uint8_t opcode, bool is_fd)
+{
+    uint8_t prefix = (is_fd) ? 0xFD : 0xDD;
+    auto &indexreg = (is_fd) ? iy : ix;
+
+    int cycle_count = 0;
+
+    switch (opcode)
+    {
+	case 0xE1: indexreg.setreg(pop_stack()); cycle_count = 14; break;
+	case 0xE5: push_stack(indexreg.getreg()); cycle_count = 15; break;
+	default: unrecognizedprefixopcode(prefix, opcode); break;
     }
 
     return cycle_count;
@@ -750,6 +942,15 @@ int BeeZ80::executenextopcode(uint8_t opcode)
 // a CPU instruction it doesn't recgonize
 void BeeZ80::unrecognizedopcode(uint8_t opcode)
 {
-    cout << "Fatal: Unrecognized opcode of " << hex << (int)(opcode) << endl;
+    cout << "Fatal: Unrecognized opcode of " << hex << (int)opcode << endl;
+    exit(1);
+}
+
+// This function is called when the emulated Zilog Z80 encounters
+// a CPU prefix instruction it doesn't recgonize
+void BeeZ80::unrecognizedprefixopcode(uint8_t prefix, uint8_t opcode)
+{
+    uint16_t instr = ((prefix << 8) | opcode);
+    cout << "Fatal: Unrecognized prefix opcode of " << hex << (int)instr << endl;
     exit(1);
 }

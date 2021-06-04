@@ -218,6 +218,7 @@ void run_test(BeeZ80 &core, string filename, uint64_t cycles_expected)
     while (!is_test_done)
     {
 	num_instrs += 1;
+	core.debugoutput();
 	cycles += core.runinstruction();
     }
 
@@ -236,6 +237,6 @@ int main(int argc, char *argv[])
 {
     BeeZ80 core;
     run_test(core, "tests/TEST.COM", 301LU); // barebones demo program to test system functionality
-    run_test(core, "tests/PRELIM.COM", 7972LU); // ZEXALL Preliminary Exerciser
+    run_test(core, "tests/PRELIM.COM", 8721LU); // ZEXALL Preliminary Exerciser
     return 0;
 }

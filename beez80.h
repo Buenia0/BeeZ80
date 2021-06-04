@@ -116,23 +116,26 @@ namespace beez80
 	    // Runs the CPU for one instruction
 	    int runinstruction();
 
-	    /*
 	    // Prints debug output to the console
 	    void debugoutput(bool printdisassembly = true);
 
 	    // Disassembles a Zilog Z80 instruction at address of "addr"
 	    string disassembleinstr(uint16_t addr);
-	    */
 
 	private:
 	    // Private declaration of interface class
 	    BeeZ80Interface *inter = NULL;
 
-	    // Contains the main logic for the 8080 instruction set
+	    // Contains the main logic for the Z80 instruction set
 	    int executenextopcode(uint8_t opcode);
+	    int executenextindexopcode(uint8_t opcode, bool is_fd);
 
 	    // Prints the unrecognized instruction and then exits
 	    void unrecognizedopcode(uint8_t opcode);
+	    void unrecognizedprefixopcode(uint8_t prefix, uint8_t opcode);
+
+	    // Helper functions for disassembler
+	    string dissassembleindexinstr(uint16_t addr, bool is_fd);
 
 	    // Internal functions for memory and I/O access
 

@@ -7,5 +7,6 @@ fi
 
 
 if [[ -f "beez80-tests.exe" ]]; then
-	cp -r ../tests .
+	mkdir -p tests
+	cp -r ../tests/*.COM tests/
 fi
