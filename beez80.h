@@ -194,7 +194,7 @@ namespace beez80
 	    // TODO: Implement the rest of these operations
 	    void arith_cmp(uint8_t val);
 	    void logical_and(uint8_t val);
-
+	    void logical_xor(uint8_t val);
 
 	    // Internal code for arithmetic operations
 	    // Note: "carry" defaults to false in this implementation

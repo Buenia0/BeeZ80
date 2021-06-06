@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.1)
 project(beez80)
 
-option(BUILD_Z80_TESTS "Enables the BeeZ80 test suite." ON)
+option(BUILD_Z80_TESTS "Enables the BeeZ80 test suite." OFF)
 
 if (WIN32)
 	message(STATUS "Operating system is Windows.")

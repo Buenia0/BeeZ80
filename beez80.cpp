@@ -666,6 +666,19 @@ void BeeZ80::logical_and(uint8_t val)
     af.sethi(res);
 }
 
+// Logic for XOR instruction
+void BeeZ80::logical_xor(uint8_t val)
+{
+    uint8_t res = (af.gethi() ^ val);
+    setzs(res);
+    setxy(res);
+    setsubtract(false);
+    setcarry(false);
+    sethalf(false);
+    setpariflow(parity(res));
+    af.sethi(res);
+}
+
 string BeeZ80::disassembleinstr(uint16_t addr)
 {
     stringstream instr;
@@ -756,6 +769,14 @@ string BeeZ80::disassembleinstr(uint16_t addr)
 	case 0xA5: instr << "AND L"; break;
 	case 0xA6: instr << "AND (HL)"; break;
 	case 0xA7: instr << "AND A"; break;
+	case 0xA8: instr << "XOR B"; break;
+	case 0xA9: instr << "XOR C"; break;
+	case 0xAA: instr << "XOR D"; break;
+	case 0xAB: instr << "XOR E"; break;
+	case 0xAC: instr << "XOR H"; break;
+	case 0xAD: instr << "XOR L"; break;
+	case 0xAE: instr << "XOR (HL)"; break;
+	case 0xAF: instr << "XOR A"; break;
 	case 0xC1: instr << "POP BC"; break;
 	case 0xC2: instr << "JP NZ, " << hex << (int)imm_word; break;
 	case 0xC3: instr << "JP " << hex << (int)imm_word; break;
@@ -814,6 +835,7 @@ int BeeZ80::executenextopcode(uint8_t opcode)
 
     switch (opcode)
     {
+	case 0x00: cycle_count = 4; break;
 	case 0x08: cycle_count = ex_af_afs(); break; // EX AF, AF'
 	case 0x0E: bc.setlo(getimmByte()); cycle_count = 7; break; // LD C, imm8
 	case 0x21: hl.setreg(getimmWord()); cycle_count = 10; break; // LD HL, imm16
@@ -891,6 +913,14 @@ int BeeZ80::executenextopcode(uint8_t opcode)
 	case 0xA5: logical_and(hl.getlo()); cycle_count = 4; break; // AND L
 	case 0xA6: logical_and(readByte(hl.getreg())); cycle_count = 7; break; // AND (HL)
 	case 0xA7: logical_and(af.gethi()); cycle_count = 4; break; // AND A
+	case 0xA8: logical_xor(bc.gethi()); cycle_count = 4; break; // XOR B
+	case 0xA9: logical_xor(bc.getlo()); cycle_count = 4; break; // XOR C
+	case 0xAA: logical_xor(de.gethi()); cycle_count = 4; break; // XOR D
+	case 0xAB: logical_xor(de.getlo()); cycle_count = 4; break; // XOR E
+	case 0xAC: logical_xor(hl.gethi()); cycle_count = 4; break; // XOR H
+	case 0xAD: logical_xor(hl.getlo()); cycle_count = 4; break; // XOR L
+	case 0xAE: logical_xor(readByte(hl.getreg())); cycle_count = 7; break; // XOR (HL)
+	case 0xAF: logical_xor(af.gethi()); cycle_count = 4; break; // XOR A
 	case 0xC1: bc.setreg(pop_stack()); cycle_count = 10; break; // POP BC
 	case 0xC2: cycle_count = jump(getimmWord(), !iszero()); break; // JP NZ, imm16
 	case 0xC3: cycle_count = jump(getimmWord()); break; // JP imm16
