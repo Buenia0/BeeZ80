@@ -218,7 +218,7 @@ void run_test(BeeZ80 &core, string filename, uint64_t cycles_expected)
     while (!is_test_done)
     {
 	num_instrs += 1;
-	core.debugoutput();
+	// core.debugoutput();
 	cycles += core.runinstruction();
     }
 

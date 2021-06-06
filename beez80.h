@@ -173,6 +173,9 @@ namespace beez80
 	    // Logic for RET instruction
 	    int ret();
 
+	    // Logic for conditional RET instructions
+	    int ret_cond(bool cond);
+
 	    // Logic for PUSH instruction
 	    int push_stack(uint16_t val);
 
@@ -183,6 +186,12 @@ namespace beez80
 	    int ex_af_afs();
 	    int exx();
 	    int ex_de_hl();
+
+	    // Logic for rotation instructions
+	    int rlca();
+	    int rrca();
+	    int rla();
+	    int rra();
 
 	    // Set zero and sign flags (8-bit version)
 	    void setzs(uint8_t val);
