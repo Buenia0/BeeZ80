@@ -643,6 +643,32 @@ uint8_t BeeZ80::sub_internal(uint8_t reg, uint8_t val, bool carryflag)
     return res;
 }
 
+uint8_t BeeZ80::inc_reg(uint8_t val)
+{
+    uint8_t temp = (val + 1);
+
+    setsubtract(false);
+    setpariflow((temp == 0x80));
+    sethalf((temp & 0xF) == 0);
+    setzs(temp);
+    setxy(temp);
+
+    return temp;
+}
+
+uint8_t BeeZ80::dec_reg(uint8_t val)
+{
+    uint8_t temp = (val - 1);
+
+    setsubtract(true);
+    setpariflow((temp == 0x7F));
+    sethalf((temp & 0xF) == 0xF);
+    setzs(temp);
+    setxy(temp);
+
+    return temp;
+}
+
 // Sets zero and sign flags (8-bit version)
 void BeeZ80::setzs(uint8_t val)
 {
@@ -757,31 +783,47 @@ string BeeZ80::disassembleinstr(uint16_t addr)
 	case 0x00: instr << "NOP"; break;
 	case 0x01: instr << "LD BC, " << hex << (int)imm_word; break;
 	case 0x03: instr << "INC BC"; break;
+	case 0x04: instr << "INC B"; break;
+	case 0x05: instr << "DEC B"; break;
 	case 0x06: instr << "LD B, " << hex << (int)imm_byte; break;
 	case 0x07: instr << "RLCA"; break;
 	case 0x08: instr << "EX AF, AF'"; break;
 	case 0x0B: instr << "DEC BC"; break;
+	case 0x0C: instr << "INC C"; break;
+	case 0x0D: instr << "DEC C"; break;
 	case 0x0E: instr << "LD C, " << hex << (int)imm_byte; break;
 	case 0x0F: instr << "RRCA"; break;
 	case 0x11: instr << "LD DE, " << hex << (int)imm_word; break;
 	case 0x13: instr << "INC DE"; break;
+	case 0x14: instr << "INC D"; break;
+	case 0x15: instr << "DEC D"; break;
 	case 0x16: instr << "LD D, " << hex << (int)imm_byte; break;
 	case 0x17: instr << "RLA"; break;
 	case 0x1B: instr << "DEC DE"; break;
+	case 0x1C: instr << "INC E"; break;
+	case 0x1D: instr << "DEC E"; break;
 	case 0x1E: instr << "LD E, " << hex << (int)imm_byte; break;
 	case 0x1F: instr << "RRA"; break;
 	case 0x21: instr << "LD HL, " << hex << (int)imm_word; break;
 	case 0x22: instr << "LD (" << hex << (int)imm_word << "), HL"; break;
 	case 0x23: instr << "INC HL"; break;
+	case 0x24: instr << "INC H"; break;
+	case 0x25: instr << "DEC H"; break;
 	case 0x26: instr << "LD H, " << hex << (int)imm_byte; break;
 	case 0x2B: instr << "DEC HL"; break;
+	case 0x2C: instr << "INC L"; break;
+	case 0x2D: instr << "DEC L"; break;
 	case 0x2E: instr << "LD L, " << hex << (int)imm_byte; break;
 	case 0x31: instr << "LD SP, " << hex << (int)imm_word; break;
 	case 0x32: instr << "LD (" << hex << (int)imm_word << "), A"; break;
 	case 0x33: instr << "INC SP"; break;
+	case 0x34: instr << "INC (HL)"; break;
+	case 0x35: instr << "DEC (HL)"; break;
 	case 0x36: instr << "LD (HL), " << hex << (int)imm_byte; break;
 	case 0x3A: instr << "LD A, (" << hex << (int)imm_word << ")"; break;
 	case 0x3B: instr << "DEC SP"; break;
+	case 0x3C: instr << "INC A"; break;
+	case 0x3D: instr << "DEC A"; break;
 	case 0x3E: instr << "LD A, " << hex << (int)imm_byte; break;
 	case 0x40: instr << "LD B, B"; break;
 	case 0x41: instr << "LD B, C"; break;
@@ -943,31 +985,47 @@ int BeeZ80::executenextopcode(uint8_t opcode)
 	case 0x00: cycle_count = 4; break; // NOP
 	case 0x01: bc.setreg(getimmWord()); cycle_count = 10; break; // LD BC, imm16
 	case 0x03: bc.setreg((bc.getreg() + 1)); cycle_count = 6; break; // INC BC
+	case 0x04: bc.sethi(inc_reg(bc.gethi())); cycle_count = 4; break; // INC B
+	case 0x05: bc.sethi(dec_reg(bc.gethi())); cycle_count = 4; break; // DEC B
 	case 0x06: bc.sethi(getimmByte()); cycle_count = 7; break; // LD B, imm8
 	case 0x07: cycle_count = rlca(); break; // RLCA
 	case 0x08: cycle_count = ex_af_afs(); break; // EX AF, AF'
 	case 0x0B: bc.setreg((bc.getreg() - 1)); cycle_count = 6; break; // DEC BC
+	case 0x0C: bc.setlo(inc_reg(bc.getlo())); cycle_count = 4; break; // INC C
+	case 0x0D: bc.setlo(dec_reg(bc.getlo())); cycle_count = 4; break; // DEC C
 	case 0x0E: bc.setlo(getimmByte()); cycle_count = 7; break; // LD C, imm8
 	case 0x0F: cycle_count = rrca(); break; // RRCA
 	case 0x11: de.setreg(getimmWord()); cycle_count = 10; break; // LD DE, imm16
 	case 0x13: de.setreg((de.getreg() + 1)); cycle_count = 6; break; // INC DE
+	case 0x14: de.sethi(inc_reg(de.gethi())); cycle_count = 4; break; // INC D
+	case 0x15: de.sethi(dec_reg(de.gethi())); cycle_count = 4; break; // DEC D
 	case 0x16: de.sethi(getimmByte()); cycle_count = 7; break; // LD D, imm8
 	case 0x17: cycle_count = rla(); break; // RLA
 	case 0x1B: de.setreg((de.getreg() - 1)); cycle_count = 6; break; // DEC DE
+	case 0x1C: de.setlo(inc_reg(de.getlo())); cycle_count = 4; break; // INC E
+	case 0x1D: de.setlo(dec_reg(de.getlo())); cycle_count = 4; break; // DEC E
 	case 0x1E: de.setlo(getimmByte()); cycle_count = 7; break; // LD E, imm8
 	case 0x1F: cycle_count = rra(); break; // RRA
 	case 0x21: hl.setreg(getimmWord()); cycle_count = 10; break; // LD HL, imm16
 	case 0x22: writeWord(getimmWord(), hl.getreg()); cycle_count = 16; break; // LD (imm16), HL
 	case 0x23: hl.setreg((hl.getreg() + 1)); cycle_count = 6; break; // INC HL
+	case 0x24: hl.sethi(inc_reg(hl.gethi())); cycle_count = 4; break; // INC H
+	case 0x25: hl.sethi(dec_reg(hl.gethi())); cycle_count = 4; break; // DEC H
 	case 0x26: hl.sethi(getimmByte()); cycle_count = 7; break; // LD H, imm8
 	case 0x2B: hl.setreg((hl.getreg() - 1)); cycle_count = 6; break; // DEC HL
+	case 0x2C: hl.setlo(inc_reg(hl.getlo())); cycle_count = 4; break; // INC L
+	case 0x2D: hl.setlo(dec_reg(hl.getlo())); cycle_count = 4; break; // DEC L
 	case 0x2E: hl.setlo(getimmByte()); cycle_count = 7; break; // LD L, imm8
 	case 0x31: sp = getimmWord(); cycle_count = 10; break; // LD SP, imm16
 	case 0x32: writeByte(getimmWord(), af.gethi()); cycle_count = 13; break; // LD (imm16), A
 	case 0x33: sp += 1; cycle_count = 6; break; // INC SP
+	case 0x34: writeByte(hl.getreg(), inc_reg(readByte(hl.getreg()))); cycle_count = 11; break; // INC (HL)
+	case 0x35: writeByte(hl.getreg(), dec_reg(readByte(hl.getreg()))); cycle_count = 11; break; // DEC (HL)
 	case 0x36: writeByte(hl.getreg(), getimmByte()); cycle_count = 10; break; // LD (HL), imm8
 	case 0x3A: af.sethi(readByte(getimmWord())); cycle_count = 13; break; // LD A, (imm16)
 	case 0x3B: sp -= 1; cycle_count = 6; break; // DEC SP
+	case 0x3C: af.sethi(inc_reg(af.gethi())); cycle_count = 4; break; // INC H
+	case 0x3D: af.sethi(dec_reg(af.gethi())); cycle_count = 4; break; // DEC H
 	case 0x3E: af.sethi(getimmByte()); cycle_count = 7; break; // LD A, imm8
 	case 0x40: bc.sethi(bc.gethi()); cycle_count = 4; break; // LD B, B
 	case 0x41: bc.sethi(bc.getlo()); cycle_count = 4; break; // LD B, C
