@@ -218,6 +218,7 @@ void run_test(BeeZ80 &core, string filename, uint64_t cycles_expected)
     while (!is_test_done)
     {
 	num_instrs += 1;
+	// WARNING: Uncommenting the following line will output dozens of GB of data!
 	// core.debugoutput();
 	cycles += core.runinstruction();
     }
@@ -236,7 +237,9 @@ void run_test(BeeZ80 &core, string filename, uint64_t cycles_expected)
 int main(int argc, char *argv[])
 {
     BeeZ80 core;
-    run_test(core, "tests/TEST.COM", 301LU); // barebones demo program to test system functionality
-    run_test(core, "tests/PRELIM.COM", 8721LU); // ZEXALL Preliminary Exerciser
+    run_test(core, "tests/TEST.COM", 300LU); // barebones demo program to test system functionality
+    run_test(core, "tests/PRELIM.COM", 8873LU); // ZEXALL Preliminary Exerciser
+    run_test(core, "tests/ZEXDOC.COM", 46734978649LU); // ZEXDOC Exerciser
+    run_test(core, "tests/ZEXALL.COM", 46734978649LU); // ZEXALL Exerciser
     return 0;
 }

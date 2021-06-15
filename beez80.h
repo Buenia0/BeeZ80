@@ -126,6 +126,8 @@ namespace beez80
 	    // Private declaration of interface class
 	    BeeZ80Interface *inter = NULL;
 
+	    // Logic for int
+
 	    // Contains the main logic for the Z80 instruction set
 	    int executenextopcode(uint8_t opcode);
 	    int executenextindexopcode(uint8_t opcode, bool is_fd);
@@ -166,6 +168,12 @@ namespace beez80
 
 	    // Logic for JP instruction
 	    int jump(uint16_t word, bool cond = true);
+
+	    // Logic for JR instruction
+	    int jr(bool cond = true);
+
+	    // Logic for DJNZ instruction
+	    int djnz();
 
 	    // Logic for CALL instruction
 	    int call(bool cond = true);
@@ -217,6 +225,9 @@ namespace beez80
 	    // when performing an addition or subtraction of two values
 	    bool carry(int bit_num, uint8_t reg, uint8_t val, uint16_t res);
 
+	    // Logic for index displacement
+	    uint16_t displacement(uint16_t base_addr);
+
 	    // Logic code for setting individual flags
 	    void setcarry(bool val); // Sets carry flag
 	    void sethalf(bool val); // Sets auxillary-carry (aka. half-carry) flag
@@ -245,6 +256,14 @@ namespace beez80
 
 	    // Function for calculating the parity of a byte
 	    bool parity(uint8_t val);
+
+	    // Variables for interrupts
+	    bool interrupt_delay = false;
+	    bool interrupt_one = false;
+	    bool interrupt_two = false;
+
+	    // Variable to keep track of whether or not the CPU is halted
+	    bool is_halted = false;
     };
 	
 };

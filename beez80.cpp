@@ -164,8 +164,19 @@ void BeeZ80::setinterface(BeeZ80Interface *cb)
 // Executes a single instruction and returns its cycle count
 int BeeZ80::runinstruction()
 {
-    // Execute next instruction
-    return executenextopcode(getOpcode());
+    int cycles = 0;
+    if (is_halted)
+    {
+	// Execute NOPs if CPU is halted
+	cycles = executenextopcode(0x00);
+    }
+    else
+    {
+	// Execute next instruction
+	cycles = executenextopcode(getOpcode());
+    }
+
+    return cycles;
 }
 
 void BeeZ80::debugoutput(bool printdisassembly)
@@ -340,6 +351,36 @@ int BeeZ80::jump(uint16_t word, bool cond)
     return 10;
 }
 
+// Logic for DJNZ instrucrion
+int BeeZ80::djnz()
+{
+    int8_t jr_byte = getimmByte();
+
+    bc.sethi(bc.gethi() - 1);
+
+    if (bc.gethi() != 0)
+    {
+	pc += jr_byte;
+	return 13;
+    }
+
+    return 8;
+}
+
+// Logic for JR instruction
+int BeeZ80::jr(bool cond)
+{
+    int8_t jr_byte = getimmByte();
+
+    if (cond == true)
+    {
+	pc += jr_byte;
+	return 12;
+    }
+
+    return 7;
+}
+
 // Call instruction code (takes up 17 cycles if cond is true, or 10 cycles if cond is false)
 int BeeZ80::call(bool cond)
 {
@@ -358,7 +399,7 @@ int BeeZ80::call(bool cond)
     }
 
     // A call instruction takes up 10 cycles if cond is false
-    return 11;
+    return 10;
 }
 
 // Return instruction code (takes up 10 cycles)
@@ -443,6 +484,14 @@ int BeeZ80::exx()
     des.setreg(de_old);
     hls.setreg(hl_old);
     return 4;
+}
+
+// Logic for index displacement
+uint16_t BeeZ80::displacement(uint16_t base_addr)
+{
+    int8_t displace_byte = getimmByte();
+    uint16_t displace_addr = (base_addr + displace_byte);
+    return displace_addr;
 }
 
 // Bit manipulation functions start here
@@ -782,44 +831,55 @@ string BeeZ80::disassembleinstr(uint16_t addr)
     {
 	case 0x00: instr << "NOP"; break;
 	case 0x01: instr << "LD BC, " << hex << (int)imm_word; break;
+	case 0x02: instr << "LD (BC), A"; break;
 	case 0x03: instr << "INC BC"; break;
 	case 0x04: instr << "INC B"; break;
 	case 0x05: instr << "DEC B"; break;
 	case 0x06: instr << "LD B, " << hex << (int)imm_byte; break;
 	case 0x07: instr << "RLCA"; break;
 	case 0x08: instr << "EX AF, AF'"; break;
+	case 0x0A: instr << "LD A, (BC)"; break;
 	case 0x0B: instr << "DEC BC"; break;
 	case 0x0C: instr << "INC C"; break;
 	case 0x0D: instr << "DEC C"; break;
 	case 0x0E: instr << "LD C, " << hex << (int)imm_byte; break;
 	case 0x0F: instr << "RRCA"; break;
+	case 0x10: instr << "DJNZ " << hex << (int)imm_byte; break;
 	case 0x11: instr << "LD DE, " << hex << (int)imm_word; break;
+	case 0x12: instr << "LD (DE), A"; break;
 	case 0x13: instr << "INC DE"; break;
 	case 0x14: instr << "INC D"; break;
 	case 0x15: instr << "DEC D"; break;
 	case 0x16: instr << "LD D, " << hex << (int)imm_byte; break;
 	case 0x17: instr << "RLA"; break;
+	case 0x18: instr << "JR " << hex << (int)imm_byte; break;
+	case 0x1A: instr << "LD A, (DE)"; break;
 	case 0x1B: instr << "DEC DE"; break;
 	case 0x1C: instr << "INC E"; break;
 	case 0x1D: instr << "DEC E"; break;
 	case 0x1E: instr << "LD E, " << hex << (int)imm_byte; break;
 	case 0x1F: instr << "RRA"; break;
+	case 0x20: instr << "JR NZ, " << hex << (int)imm_byte; break;
 	case 0x21: instr << "LD HL, " << hex << (int)imm_word; break;
 	case 0x22: instr << "LD (" << hex << (int)imm_word << "), HL"; break;
 	case 0x23: instr << "INC HL"; break;
 	case 0x24: instr << "INC H"; break;
 	case 0x25: instr << "DEC H"; break;
 	case 0x26: instr << "LD H, " << hex << (int)imm_byte; break;
+	case 0x28: instr << "JR Z, " << hex << (int)imm_byte; break;
+	case 0x2A: instr << "LD HL, (" << hex << (int)imm_word << ")"; break;
 	case 0x2B: instr << "DEC HL"; break;
 	case 0x2C: instr << "INC L"; break;
 	case 0x2D: instr << "DEC L"; break;
 	case 0x2E: instr << "LD L, " << hex << (int)imm_byte; break;
+	case 0x30: instr << "JR NC, " << hex << (int)imm_byte; break;
 	case 0x31: instr << "LD SP, " << hex << (int)imm_word; break;
 	case 0x32: instr << "LD (" << hex << (int)imm_word << "), A"; break;
 	case 0x33: instr << "INC SP"; break;
 	case 0x34: instr << "INC (HL)"; break;
 	case 0x35: instr << "DEC (HL)"; break;
 	case 0x36: instr << "LD (HL), " << hex << (int)imm_byte; break;
+	case 0x38: instr << "JR C, " << hex << (int)imm_byte; break;
 	case 0x3A: instr << "LD A, (" << hex << (int)imm_word << ")"; break;
 	case 0x3B: instr << "DEC SP"; break;
 	case 0x3C: instr << "INC A"; break;
@@ -879,6 +939,7 @@ string BeeZ80::disassembleinstr(uint16_t addr)
 	case 0x73: instr << "LD (HL), E"; break;
 	case 0x74: instr << "LD (HL), H"; break;
 	case 0x75: instr << "LD (HL), L"; break;
+	case 0x76: instr << "HALT"; break;
 	case 0x77: instr << "LD (HL), A"; break;
 	case 0x78: instr << "LD A, B"; break;
 	case 0x79: instr << "LD A, C"; break;
@@ -934,15 +995,18 @@ string BeeZ80::disassembleinstr(uint16_t addr)
 	case 0xE5: instr << "PUSH HL"; break;
 	case 0xE6: instr << "AND " << hex << (int)imm_byte; break;
 	case 0xE8: instr << "RET PE"; break;
+	case 0xE9: instr << "JP HL"; break;
 	case 0xEA: instr << "JP PE, " << hex << (int)imm_word; break;
 	case 0xEB: instr << "EX DE, HL"; break;
 	case 0xEC: instr << "CALL PE, " << hex << (int)imm_word; break;
 	case 0xF0: instr << "RET P"; break;
 	case 0xF1: instr << "POP AF"; break;
 	case 0xF2: instr << "JP P, " << hex << (int)imm_word; break;
+	case 0xF3: instr << "DI"; break;
 	case 0xF4: instr << "CALL P, " << hex << (int)imm_word; break;
 	case 0xF5: instr << "PUSH AF"; break;
 	case 0xF8: instr << "RET M"; break;
+	case 0xF9: instr << "LD SP, HL"; break;
 	case 0xFA: instr << "JP M, " << hex << (int)imm_word; break;
 	case 0xFC: instr << "CALL M, " << hex << (int)imm_word; break;
 	case 0xFD: instr << dissassembleindexinstr(pc_val, true); break;
@@ -967,8 +1031,26 @@ string BeeZ80::dissassembleindexinstr(uint16_t addr, bool is_fd)
 
     switch (opcode)
     {
+	case 0x21: instr << "LD " << index_reg << ", " << hex << (int)imm_word; break;
+	case 0x23: instr << "INC " << index_reg; break;
+	case 0x2B: instr << "DEC " << index_reg; break;
+	case 0x46: instr << "LD B, (" << index_reg << " + " << hex << (int)imm_byte << ")"; break;
+	case 0x4E: instr << "LD C, (" << index_reg << " + " << hex << (int)imm_byte << ")"; break;
+	case 0x56: instr << "LD D, (" << index_reg << " + " << hex << (int)imm_byte << ")"; break;
+	case 0x5E: instr << "LD E, (" << index_reg << " + " << hex << (int)imm_byte << ")"; break;
+	case 0x66: instr << "LD H, (" << index_reg << " + " << hex << (int)imm_byte << ")"; break;
+	case 0x6E: instr << "LD L, (" << index_reg << " + " << hex << (int)imm_byte << ")"; break;
+	case 0x70: instr << "LD (" << index_reg << " + " << hex << (int)imm_byte << "), B"; break;
+	case 0x71: instr << "LD (" << index_reg << " + " << hex << (int)imm_byte << "), C"; break;
+	case 0x72: instr << "LD (" << index_reg << " + " << hex << (int)imm_byte << "), D"; break;
+	case 0x73: instr << "LD (" << index_reg << " + " << hex << (int)imm_byte << "), E"; break;
+	case 0x74: instr << "LD (" << index_reg << " + " << hex << (int)imm_byte << "), H"; break;
+	case 0x75: instr << "LD (" << index_reg << " + " << hex << (int)imm_byte << "), L"; break;
+	case 0x77: instr << "LD (" << index_reg << " + " << hex << (int)imm_byte << "), A"; break;
+	case 0x7E: instr << "LD A, (" << index_reg << " + " << hex << (int)imm_byte << ")"; break;
 	case 0xE1: instr << "POP " << index_reg; break;
 	case 0xE5: instr << "PUSH " << index_reg; break;
+	case 0xE9: instr << "JP " << index_reg; break;
 	default: instr << "unknown " << index_reg << ", " << hex << (int)opcode; break;
     }
 
@@ -984,48 +1066,59 @@ int BeeZ80::executenextopcode(uint8_t opcode)
     {
 	case 0x00: cycle_count = 4; break; // NOP
 	case 0x01: bc.setreg(getimmWord()); cycle_count = 10; break; // LD BC, imm16
+	case 0x02: writeByte(bc.getreg(), af.gethi()); cycle_count = 7; break; // LD (BC), A
 	case 0x03: bc.setreg((bc.getreg() + 1)); cycle_count = 6; break; // INC BC
 	case 0x04: bc.sethi(inc_reg(bc.gethi())); cycle_count = 4; break; // INC B
 	case 0x05: bc.sethi(dec_reg(bc.gethi())); cycle_count = 4; break; // DEC B
 	case 0x06: bc.sethi(getimmByte()); cycle_count = 7; break; // LD B, imm8
 	case 0x07: cycle_count = rlca(); break; // RLCA
 	case 0x08: cycle_count = ex_af_afs(); break; // EX AF, AF'
+	case 0x0A: af.sethi(readByte(bc.getreg())); cycle_count = 7; break; // LD A, (BC)
 	case 0x0B: bc.setreg((bc.getreg() - 1)); cycle_count = 6; break; // DEC BC
 	case 0x0C: bc.setlo(inc_reg(bc.getlo())); cycle_count = 4; break; // INC C
 	case 0x0D: bc.setlo(dec_reg(bc.getlo())); cycle_count = 4; break; // DEC C
 	case 0x0E: bc.setlo(getimmByte()); cycle_count = 7; break; // LD C, imm8
 	case 0x0F: cycle_count = rrca(); break; // RRCA
+	case 0x10: cycle_count = djnz(); break; // DJNZ imm8
 	case 0x11: de.setreg(getimmWord()); cycle_count = 10; break; // LD DE, imm16
+	case 0x12: writeByte(de.getreg(), af.gethi()); cycle_count = 7; break; // LD (DE), A
 	case 0x13: de.setreg((de.getreg() + 1)); cycle_count = 6; break; // INC DE
 	case 0x14: de.sethi(inc_reg(de.gethi())); cycle_count = 4; break; // INC D
 	case 0x15: de.sethi(dec_reg(de.gethi())); cycle_count = 4; break; // DEC D
 	case 0x16: de.sethi(getimmByte()); cycle_count = 7; break; // LD D, imm8
 	case 0x17: cycle_count = rla(); break; // RLA
+	case 0x18: cycle_count = jr(); break; // JR imm8
+	case 0x1A: af.sethi(readByte(de.getreg())); cycle_count = 7; break; // LD A, (DE)
 	case 0x1B: de.setreg((de.getreg() - 1)); cycle_count = 6; break; // DEC DE
 	case 0x1C: de.setlo(inc_reg(de.getlo())); cycle_count = 4; break; // INC E
 	case 0x1D: de.setlo(dec_reg(de.getlo())); cycle_count = 4; break; // DEC E
 	case 0x1E: de.setlo(getimmByte()); cycle_count = 7; break; // LD E, imm8
 	case 0x1F: cycle_count = rra(); break; // RRA
+	case 0x20: cycle_count = jr(!iszero()); break; // JR NZ, imm8
 	case 0x21: hl.setreg(getimmWord()); cycle_count = 10; break; // LD HL, imm16
 	case 0x22: writeWord(getimmWord(), hl.getreg()); cycle_count = 16; break; // LD (imm16), HL
 	case 0x23: hl.setreg((hl.getreg() + 1)); cycle_count = 6; break; // INC HL
 	case 0x24: hl.sethi(inc_reg(hl.gethi())); cycle_count = 4; break; // INC H
 	case 0x25: hl.sethi(dec_reg(hl.gethi())); cycle_count = 4; break; // DEC H
 	case 0x26: hl.sethi(getimmByte()); cycle_count = 7; break; // LD H, imm8
+	case 0x28: cycle_count = jr(iszero()); break; // JR Z, imm8
+	case 0x2A: hl.setreg(readWord(getimmWord())); cycle_count = 16; break; // LD HL, (imm16)
 	case 0x2B: hl.setreg((hl.getreg() - 1)); cycle_count = 6; break; // DEC HL
 	case 0x2C: hl.setlo(inc_reg(hl.getlo())); cycle_count = 4; break; // INC L
 	case 0x2D: hl.setlo(dec_reg(hl.getlo())); cycle_count = 4; break; // DEC L
 	case 0x2E: hl.setlo(getimmByte()); cycle_count = 7; break; // LD L, imm8
+	case 0x30: cycle_count = jr(!iscarry()); break; // JR NC, imm8
 	case 0x31: sp = getimmWord(); cycle_count = 10; break; // LD SP, imm16
 	case 0x32: writeByte(getimmWord(), af.gethi()); cycle_count = 13; break; // LD (imm16), A
 	case 0x33: sp += 1; cycle_count = 6; break; // INC SP
 	case 0x34: writeByte(hl.getreg(), inc_reg(readByte(hl.getreg()))); cycle_count = 11; break; // INC (HL)
 	case 0x35: writeByte(hl.getreg(), dec_reg(readByte(hl.getreg()))); cycle_count = 11; break; // DEC (HL)
 	case 0x36: writeByte(hl.getreg(), getimmByte()); cycle_count = 10; break; // LD (HL), imm8
+	case 0x38: cycle_count = jr(iscarry()); break; // JR C, imm8
 	case 0x3A: af.sethi(readByte(getimmWord())); cycle_count = 13; break; // LD A, (imm16)
 	case 0x3B: sp -= 1; cycle_count = 6; break; // DEC SP
-	case 0x3C: af.sethi(inc_reg(af.gethi())); cycle_count = 4; break; // INC H
-	case 0x3D: af.sethi(dec_reg(af.gethi())); cycle_count = 4; break; // DEC H
+	case 0x3C: af.sethi(inc_reg(af.gethi())); cycle_count = 4; break; // INC A
+	case 0x3D: af.sethi(dec_reg(af.gethi())); cycle_count = 4; break; // DEC A
 	case 0x3E: af.sethi(getimmByte()); cycle_count = 7; break; // LD A, imm8
 	case 0x40: bc.sethi(bc.gethi()); cycle_count = 4; break; // LD B, B
 	case 0x41: bc.sethi(bc.getlo()); cycle_count = 4; break; // LD B, C
@@ -1081,6 +1174,7 @@ int BeeZ80::executenextopcode(uint8_t opcode)
 	case 0x73: writeByte(hl.getreg(), de.getlo()); cycle_count = 7; break; // LD (HL), E
 	case 0x74: writeByte(hl.getreg(), hl.gethi()); cycle_count = 7; break; // LD (HL), H
 	case 0x75: writeByte(hl.getreg(), hl.getlo()); cycle_count = 7; break; // LD (HL), L
+	case 0x76: is_halted = true; cycle_count = 4; break; // HALT
 	case 0x77: writeByte(hl.getreg(), af.gethi()); cycle_count = 7; break; // LD (HL), A
 	case 0x78: af.sethi(bc.gethi()); cycle_count = 4; break; // LD A, B
 	case 0x79: af.sethi(bc.getlo()); cycle_count = 4; break; // LD A, C
@@ -1136,15 +1230,23 @@ int BeeZ80::executenextopcode(uint8_t opcode)
 	case 0xE5: cycle_count = push_stack(hl.getreg()); break; // PUSH HL
 	case 0xE6: logical_and(getimmByte()); cycle_count = 7; break; // AND imm8
 	case 0xE8: cycle_count = ret_cond(ispariflow()); break; // RET PE
+	case 0xE9: pc = hl.getreg(); cycle_count = 4; break; // JP HL
 	case 0xEA: cycle_count = jump(getimmWord(), ispariflow()); break; // JP PE, imm16
 	case 0xEB: cycle_count = ex_de_hl(); break; // EX DE, HL
 	case 0xEC: cycle_count = call(ispariflow()); break; // CALL PE, imm16
 	case 0xF0: cycle_count = ret_cond(!issign()); break; // RET P
 	case 0xF1: af.setreg(pop_stack()); cycle_count = 10; break; // POP AF
 	case 0xF2: cycle_count = jump(getimmWord(), !issign()); break; // JP P, imm16
+	case 0xF3: 
+	{
+	    interrupt_one = false;
+	    interrupt_two = false;
+	}
+	break; // DI
 	case 0xF4: cycle_count = call(!issign()); break; // CALL P, imm16
 	case 0xF5: cycle_count = push_stack(af.getreg()); break; // PUSH AF
 	case 0xF8: cycle_count = ret_cond(issign()); break; // RET M
+	case 0xF9: sp = hl.getreg(); cycle_count = 6; break; // LD SP, HL
 	case 0xFA: cycle_count = jump(getimmWord(), issign()); break; // JP M, imm16
 	case 0xFC: cycle_count = call(issign()); break; // CALL M, imm16
 	case 0xFD: cycle_count = executenextindexopcode(getOpcode(), true); break;
@@ -1165,8 +1267,26 @@ int BeeZ80::executenextindexopcode(uint8_t opcode, bool is_fd)
 
     switch (opcode)
     {
-	case 0xE1: indexreg.setreg(pop_stack()); cycle_count = 14; break;
-	case 0xE5: push_stack(indexreg.getreg()); cycle_count = 15; break;
+	case 0x21: indexreg.setreg(getimmWord()); cycle_count = 14; break; // LD IX/IY, imm16
+	case 0x23: indexreg.setreg(indexreg.getreg() + 1); cycle_count = 10; break; // INC IX/IY
+	case 0x2B: indexreg.setreg(indexreg.getreg() - 1); cycle_count = 10; break; // DEC IX/IY
+	case 0x46: bc.sethi(readByte(displacement(indexreg.getreg()))); cycle_count = 19; break; // LD B, (IX/IY + imm8)
+	case 0x4E: bc.setlo(readByte(displacement(indexreg.getreg()))); cycle_count = 19; break; // LD C, (IX/IY + imm8)
+	case 0x56: de.sethi(readByte(displacement(indexreg.getreg()))); cycle_count = 19; break; // LD D, (IX/IY + imm8)
+	case 0x5E: de.setlo(readByte(displacement(indexreg.getreg()))); cycle_count = 19; break; // LD E, (IX/IY + imm8)
+	case 0x66: hl.sethi(readByte(displacement(indexreg.getreg()))); cycle_count = 19; break; // LD H, (IX/IY + imm8)
+	case 0x6E: hl.setlo(readByte(displacement(indexreg.getreg()))); cycle_count = 19; break; // LD L, (IX/IY + imm8)
+	case 0x70: writeByte(displacement(indexreg.getreg()), bc.gethi()); cycle_count = 19; break; // LD (IX/IY + imm8), B
+	case 0x71: writeByte(displacement(indexreg.getreg()), bc.getlo()); cycle_count = 19; break; // LD (IX/IY + imm8), C
+	case 0x72: writeByte(displacement(indexreg.getreg()), de.gethi()); cycle_count = 19; break; // LD (IX/IY + imm8), D
+	case 0x73: writeByte(displacement(indexreg.getreg()), de.getlo()); cycle_count = 19; break; // LD (IX/IY + imm8), E
+	case 0x74: writeByte(displacement(indexreg.getreg()), hl.gethi()); cycle_count = 19; break; // LD (IX/IY + imm8), H
+	case 0x75: writeByte(displacement(indexreg.getreg()), hl.getlo()); cycle_count = 19; break; // LD (IX/IY + imm8), L
+	case 0x77: writeByte(displacement(indexreg.getreg()), af.gethi()); cycle_count = 19; break; // LD (IX/IY + imm8), A
+	case 0x7E: af.sethi(readByte(displacement(indexreg.getreg()))); cycle_count = 19; break; // LD A, (IX/IY + imm8)
+	case 0xE1: indexreg.setreg(pop_stack()); cycle_count = 14; break; // POP IX/IY
+	case 0xE5: push_stack(indexreg.getreg()); cycle_count = 15; break; // PUSH IX/IY
+	case 0xE9: pc = indexreg.getreg(); cycle_count = 8; break; // JP IX/IY
 	default: unrecognizedprefixopcode(prefix, opcode); break;
     }
 
