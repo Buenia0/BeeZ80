@@ -987,7 +987,7 @@ string BeeZ80::disassembleinstr(uint16_t addr)
 	case 0xDA: instr << "JP C, " << hex << (int)imm_word; break;
 	case 0xDB: instr << "IN A, " << hex << (int)imm_byte; break;
 	case 0xDC: instr << "CALL C, " << hex << (int)imm_word; break;
-	case 0xDD: instr << dissassembleindexinstr(pc_val, false); break;
+	case 0xDD: instr << disassembleinstrindex(pc_val, false); break;
 	case 0xE0: instr << "RET PO"; break;
 	case 0xE1: instr << "POP HL"; break;
 	case 0xE2: instr << "JP PO, " << hex << (int)imm_word; break;
@@ -999,6 +999,7 @@ string BeeZ80::disassembleinstr(uint16_t addr)
 	case 0xEA: instr << "JP PE, " << hex << (int)imm_word; break;
 	case 0xEB: instr << "EX DE, HL"; break;
 	case 0xEC: instr << "CALL PE, " << hex << (int)imm_word; break;
+	case 0xED: instr << disassembleinstrextended(pc_val); break;
 	case 0xF0: instr << "RET P"; break;
 	case 0xF1: instr << "POP AF"; break;
 	case 0xF2: instr << "JP P, " << hex << (int)imm_word; break;
@@ -1009,7 +1010,7 @@ string BeeZ80::disassembleinstr(uint16_t addr)
 	case 0xF9: instr << "LD SP, HL"; break;
 	case 0xFA: instr << "JP M, " << hex << (int)imm_word; break;
 	case 0xFC: instr << "CALL M, " << hex << (int)imm_word; break;
-	case 0xFD: instr << dissassembleindexinstr(pc_val, true); break;
+	case 0xFD: instr << disassembleinstrindex(pc_val, true); break;
 	case 0xFE: instr << "CP " << hex << (int)imm_byte; break;
 	default: instr << "unknown"; break;
     }
@@ -1017,7 +1018,7 @@ string BeeZ80::disassembleinstr(uint16_t addr)
     return instr.str();
 }
 
-string BeeZ80::dissassembleindexinstr(uint16_t addr, bool is_fd)
+string BeeZ80::disassembleinstrindex(uint16_t addr, bool is_fd)
 {
     stringstream instr;
 
@@ -1052,6 +1053,23 @@ string BeeZ80::dissassembleindexinstr(uint16_t addr, bool is_fd)
 	case 0xE5: instr << "PUSH " << index_reg; break;
 	case 0xE9: instr << "JP " << index_reg; break;
 	default: instr << "unknown " << index_reg << ", " << hex << (int)opcode; break;
+    }
+
+    return instr.str();
+}
+
+string BeeZ80::disassembleinstrextended(uint16_t addr)
+{
+    stringstream instr;
+
+    uint8_t opcode = readByte(addr);
+
+    uint16_t pc_val = (addr + 1);
+    uint16_t imm_word = readWord(pc_val);
+
+    switch (opcode)
+    {
+	case 0x47: instr << "LD I, A"; break;
     }
 
     return instr.str();
@@ -1222,7 +1240,7 @@ int BeeZ80::executenextopcode(uint8_t opcode)
 	case 0xDA: cycle_count = jump(getimmWord(), iscarry()); break; // JP C, imm16
 	case 0xDB: af.sethi(portIn(getimmByte())); cycle_count = 11; break; // IN A, imm8
 	case 0xDC: cycle_count = call(iscarry()); break; // CALL C, imm16
-	case 0xDD: cycle_count = executenextindexopcode(getOpcode(), false); break;
+	case 0xDD: cycle_count = executenextindexopcode(getOpcode(), false); break; // IX opcodes
 	case 0xE0: cycle_count = ret_cond(!ispariflow()); break; // RET PO
 	case 0xE1: hl.setreg(pop_stack()); cycle_count = 10; break; // POP HL
 	case 0xE2: cycle_count = jump(getimmWord(), !ispariflow()); break; // JP PO, imm16
@@ -1234,6 +1252,7 @@ int BeeZ80::executenextopcode(uint8_t opcode)
 	case 0xEA: cycle_count = jump(getimmWord(), ispariflow()); break; // JP PE, imm16
 	case 0xEB: cycle_count = ex_de_hl(); break; // EX DE, HL
 	case 0xEC: cycle_count = call(ispariflow()); break; // CALL PE, imm16
+	case 0xED: cycle_count = executenextextendedopcode(getOpcode()); break; // Extended opcodes
 	case 0xF0: cycle_count = ret_cond(!issign()); break; // RET P
 	case 0xF1: af.setreg(pop_stack()); cycle_count = 10; break; // POP AF
 	case 0xF2: cycle_count = jump(getimmWord(), !issign()); break; // JP P, imm16
@@ -1249,7 +1268,7 @@ int BeeZ80::executenextopcode(uint8_t opcode)
 	case 0xF9: sp = hl.getreg(); cycle_count = 6; break; // LD SP, HL
 	case 0xFA: cycle_count = jump(getimmWord(), issign()); break; // JP M, imm16
 	case 0xFC: cycle_count = call(issign()); break; // CALL M, imm16
-	case 0xFD: cycle_count = executenextindexopcode(getOpcode(), true); break;
+	case 0xFD: cycle_count = executenextindexopcode(getOpcode(), true); break; // IY opcodes
 	case 0xFE: arith_cmp(getimmByte()); cycle_count = 7; break; // CP imm8
 	default: unrecognizedopcode(opcode); cycle_count = 0; break;
     }
@@ -1288,6 +1307,19 @@ int BeeZ80::executenextindexopcode(uint8_t opcode, bool is_fd)
 	case 0xE5: push_stack(indexreg.getreg()); cycle_count = 15; break; // PUSH IX/IY
 	case 0xE9: pc = indexreg.getreg(); cycle_count = 8; break; // JP IX/IY
 	default: unrecognizedprefixopcode(prefix, opcode); break;
+    }
+
+    return cycle_count;
+}
+
+int BeeZ80::executenextextendedopcode(uint8_t opcode)
+{
+    int cycle_count = 0;
+
+    switch (opcode)
+    {
+	case 0x47: interrupt = af.gethi(); cycle_count = 9; break; // LD I, A
+	default: unrecognizedprefixopcode(0xED, opcode); break;
     }
 
     return cycle_count;
