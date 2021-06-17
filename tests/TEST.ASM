@@ -19,7 +19,7 @@
 
 begin: jmp start
 
-str_text: db	"Hello, this is Karen Kujo.", 0dh, 0ah, 24h ; Friendly greetings from your favorite waifu!
+str_text: db	"Hello, this is Karen Kujo.", 24h ; Friendly greetings from your favorite waifu!
 
 start:
 	ld	sp, $FFFE

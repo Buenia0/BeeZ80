@@ -176,7 +176,80 @@ int BeeZ80::runinstruction()
 	cycles = executenextopcode(getOpcode());
     }
 
+    cycles += process_interrupts();
+
     return cycles;
+}
+
+// Logic for processing interrupts
+int BeeZ80::process_interrupts()
+{
+    if (interrupt_delay)
+    {
+	interrupt_delay = false;
+	interrupt_one = true;
+	interrupt_two = true;
+	return 0;
+    }
+
+    if (is_nmi_pending)
+    {
+	is_nmi_pending = false;
+	is_halted = false;
+	interrupt_one = false;
+	push_stack(pc);
+	jump(0x66);
+	return 11;
+    }
+
+    if (is_int_pending && interrupt_one)
+    {
+	is_int_pending = false;
+	is_halted = false;
+	interrupt_one = false;
+	interrupt_two = false;
+	refresh = ((refresh & 0x80) | ((refresh + 1) & 0x7F));
+
+	switch (interrupt_mode)
+	{
+	    case 0:
+	    {
+		executenextopcode(interrupt_data);
+		return 11;
+	    }
+	    break;
+	    case 1:
+	    {
+		push_stack(pc);
+		jump(0x38);
+		return 13;
+	    }
+	    break;
+	    case 2:
+	    {
+		uint16_t int_addr = ((interrupt << 8) | interrupt_data);
+		push_stack(pc);
+		jump(readWord(int_addr));
+		return 19;
+	    }
+	    break;
+	}
+    }
+
+    return 0;
+}
+
+// Generates an NMI
+void BeeZ80::generate_nmi()
+{
+    is_nmi_pending = true;
+}
+
+// Generates a regular interrupt
+void BeeZ80::generate_interrupt(uint8_t data)
+{
+    is_int_pending = true;
+    interrupt_data = data;
 }
 
 void BeeZ80::debugoutput(bool printdisassembly)
@@ -752,6 +825,19 @@ void BeeZ80::logical_and(uint8_t val)
     af.sethi(res);
 }
 
+// Logic for OR instruction
+void BeeZ80::logical_or(uint8_t val)
+{
+    uint8_t res = (af.gethi() | val);
+    setzs(res);
+    setxy(res);
+    setsubtract(false);
+    setcarry(false);
+    sethalf(false);
+    setpariflow(parity(res));
+    af.sethi(res);
+}
+
 // Logic for XOR instruction
 void BeeZ80::logical_xor(uint8_t val)
 {
@@ -965,6 +1051,22 @@ string BeeZ80::disassembleinstr(uint16_t addr)
 	case 0xAD: instr << "XOR L"; break;
 	case 0xAE: instr << "XOR (HL)"; break;
 	case 0xAF: instr << "XOR A"; break;
+	case 0xB0: instr << "OR B"; break;
+	case 0xB1: instr << "OR C"; break;
+	case 0xB2: instr << "OR D"; break;
+	case 0xB3: instr << "OR E"; break;
+	case 0xB4: instr << "OR H"; break;
+	case 0xB5: instr << "OR L"; break;
+	case 0xB6: instr << "OR (HL)"; break;
+	case 0xB7: instr << "OR A"; break;
+	case 0xB8: instr << "CP B"; break;
+	case 0xB9: instr << "CP C"; break;
+	case 0xBA: instr << "CP D"; break;
+	case 0xBB: instr << "CP E"; break;
+	case 0xBC: instr << "CP H"; break;
+	case 0xBD: instr << "CP L"; break;
+	case 0xBE: instr << "CP (HL)"; break;
+	case 0xBF: instr << "CP A"; break;
 	case 0xC0: instr << "RET NZ"; break;
 	case 0xC1: instr << "POP BC"; break;
 	case 0xC2: instr << "JP NZ, " << hex << (int)imm_word; break;
@@ -1000,12 +1102,14 @@ string BeeZ80::disassembleinstr(uint16_t addr)
 	case 0xEB: instr << "EX DE, HL"; break;
 	case 0xEC: instr << "CALL PE, " << hex << (int)imm_word; break;
 	case 0xED: instr << disassembleinstrextended(pc_val); break;
+	case 0xEE: instr << "XOR " << hex << (int)imm_byte; break;
 	case 0xF0: instr << "RET P"; break;
 	case 0xF1: instr << "POP AF"; break;
 	case 0xF2: instr << "JP P, " << hex << (int)imm_word; break;
 	case 0xF3: instr << "DI"; break;
 	case 0xF4: instr << "CALL P, " << hex << (int)imm_word; break;
 	case 0xF5: instr << "PUSH AF"; break;
+	case 0xF6: instr << "OR " << hex << (int)imm_byte; break;
 	case 0xF8: instr << "RET M"; break;
 	case 0xF9: instr << "LD SP, HL"; break;
 	case 0xFA: instr << "JP M, " << hex << (int)imm_word; break;
@@ -1069,7 +1173,14 @@ string BeeZ80::disassembleinstrextended(uint16_t addr)
 
     switch (opcode)
     {
+	case 0x46: instr << "IM 0"; break;
 	case 0x47: instr << "LD I, A"; break;
+	case 0x56: instr << "IM 1"; break;
+	case 0x5E: instr << "IM 2"; break;
+	case 0x66: instr << "IM 0"; break;
+	case 0x76: instr << "IM 1"; break;
+	case 0x7E: instr << "IM 2"; break;
+	default: instr << "unknown extd, " << hex << (int)opcode; break;
     }
 
     return instr.str();
@@ -1218,6 +1329,22 @@ int BeeZ80::executenextopcode(uint8_t opcode)
 	case 0xAD: logical_xor(hl.getlo()); cycle_count = 4; break; // XOR L
 	case 0xAE: logical_xor(readByte(hl.getreg())); cycle_count = 7; break; // XOR (HL)
 	case 0xAF: logical_xor(af.gethi()); cycle_count = 4; break; // XOR A
+	case 0xB0: logical_or(bc.gethi()); cycle_count = 4; break; // OR B
+	case 0xB1: logical_or(bc.getlo()); cycle_count = 4; break; // OR C
+	case 0xB2: logical_or(de.gethi()); cycle_count = 4; break; // OR D
+	case 0xB3: logical_or(de.getlo()); cycle_count = 4; break; // OR E
+	case 0xB4: logical_or(hl.gethi()); cycle_count = 4; break; // OR H
+	case 0xB5: logical_or(hl.getlo()); cycle_count = 4; break; // OR L
+	case 0xB6: logical_or(readByte(hl.getreg())); cycle_count = 7; break; // OR (HL)
+	case 0xB7: logical_or(af.gethi()); cycle_count = 4; break; // OR A
+	case 0xB8: arith_cmp(bc.gethi()); cycle_count = 4; break; // CP B
+	case 0xB9: arith_cmp(bc.getlo()); cycle_count = 4; break; // CP C
+	case 0xBA: arith_cmp(de.gethi()); cycle_count = 4; break; // CP D
+	case 0xBB: arith_cmp(de.getlo()); cycle_count = 4; break; // CP E
+	case 0xBC: arith_cmp(hl.gethi()); cycle_count = 4; break; // CP H
+	case 0xBD: arith_cmp(hl.getlo()); cycle_count = 4; break; // CP L
+	case 0xBE: arith_cmp(readByte(hl.getreg())); cycle_count = 7; break; // CP (HL)
+	case 0xBF: arith_cmp(af.gethi()); cycle_count = 4; break; // CP A
 	case 0xC0: cycle_count = ret_cond(!iszero()); break; // RET NZ
 	case 0xC1: bc.setreg(pop_stack()); cycle_count = 10; break; // POP BC
 	case 0xC2: cycle_count = jump(getimmWord(), !iszero()); break; // JP NZ, imm16
@@ -1267,6 +1394,7 @@ int BeeZ80::executenextopcode(uint8_t opcode)
 	case 0xF8: cycle_count = ret_cond(issign()); break; // RET M
 	case 0xF9: sp = hl.getreg(); cycle_count = 6; break; // LD SP, HL
 	case 0xFA: cycle_count = jump(getimmWord(), issign()); break; // JP M, imm16
+	case 0xFB: interrupt_delay = true; break; // EI
 	case 0xFC: cycle_count = call(issign()); break; // CALL M, imm16
 	case 0xFD: cycle_count = executenextindexopcode(getOpcode(), true); break; // IY opcodes
 	case 0xFE: arith_cmp(getimmByte()); cycle_count = 7; break; // CP imm8
@@ -1318,7 +1446,13 @@ int BeeZ80::executenextextendedopcode(uint8_t opcode)
 
     switch (opcode)
     {
+	case 0x46: interrupt_mode = 0; cycle_count = 8; break; // IM 0
 	case 0x47: interrupt = af.gethi(); cycle_count = 9; break; // LD I, A
+	case 0x56: interrupt_mode = 1; cycle_count = 8; break; // IM 1
+	case 0x5E: interrupt_mode = 2; cycle_count = 8; break; // IM 2
+	case 0x66: interrupt_mode = 0; cycle_count = 8; break; // IM 0
+	case 0x76: interrupt_mode = 1; cycle_count = 8; break; // IM 1
+	case 0x7E: interrupt_mode = 2; cycle_count = 8; break; // IM 2
 	default: unrecognizedprefixopcode(0xED, opcode); break;
     }
 

@@ -110,6 +110,12 @@ namespace beez80
 	    // Resets the emulated CPU
 	    void reset(uint16_t init_pc = 0);
 
+	    // Generates an NMI interrupt
+	    void generate_nmi();
+
+	    // Generates a regular interrupt
+	    void generate_interrupt(uint8_t data);
+
 	    // Sets a custom interface for the emulated Zilog Z80
 	    void setinterface(BeeZ80Interface *cb);
 
@@ -126,7 +132,8 @@ namespace beez80
 	    // Private declaration of interface class
 	    BeeZ80Interface *inter = NULL;
 
-	    // Logic for int
+	    // Logic for interrupts
+	    int process_interrupts();
 
 	    // Contains the main logic for the Z80 instruction set
 	    int executenextopcode(uint8_t opcode);
@@ -213,6 +220,7 @@ namespace beez80
 	    // TODO: Implement the rest of these operations
 	    void arith_cmp(uint8_t val);
 	    void logical_and(uint8_t val);
+	    void logical_or(uint8_t val);
 	    void logical_xor(uint8_t val);
 	    uint8_t inc_reg(uint8_t val);
 	    uint8_t dec_reg(uint8_t val);
@@ -263,6 +271,10 @@ namespace beez80
 	    bool interrupt_delay = false;
 	    bool interrupt_one = false;
 	    bool interrupt_two = false;
+	    bool is_nmi_pending = false;
+	    bool is_int_pending = false;
+	    uint8_t interrupt_data = 0;
+	    int interrupt_mode = 0;
 
 	    // Variable to keep track of whether or not the CPU is halted
 	    bool is_halted = false;
