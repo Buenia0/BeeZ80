@@ -218,6 +218,11 @@ namespace beez80
 
 	    // ALU operations
 	    // TODO: Implement the rest of these operations
+	    void arith_add(uint8_t val);
+	    void arith_adc(uint8_t val);
+	    void arith_addhl(uint16_t val);
+	    void arith_sub(uint8_t val);
+	    void arith_sbc(uint8_t val);
 	    void arith_cmp(uint8_t val);
 	    void logical_and(uint8_t val);
 	    void logical_or(uint8_t val);
@@ -230,6 +235,8 @@ namespace beez80
 	    // to make calculations with plain addition easier
 	    uint8_t add_internal(uint8_t reg, uint8_t val, bool carryflag = false); // ADD
 	    uint8_t sub_internal(uint8_t reg, uint8_t val, bool carryflag = false); // SUB
+	    uint16_t add16_internal(uint16_t reg, uint16_t val, bool carryflag = false); // ADD (16-bit)
+	    uint16_t sub16_internal(uint16_t reg, uint16_t val, bool carryflag = false); // SUB (16-bit)
 
 	    // Function for determing carry between bit "bit_num" and "bit_num - 1"
 	    // when performing an addition or subtraction of two values
