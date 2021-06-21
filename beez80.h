@@ -190,6 +190,9 @@ namespace beez80
 	    // Logic for RET instruction
 	    int ret();
 
+	    // Logic for RST instruction
+	    int rst(uint16_t addr);
+
 	    // Logic for conditional RET instructions
 	    int ret_cond(bool cond);
 

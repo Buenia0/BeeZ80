@@ -475,11 +475,19 @@ int BeeZ80::call(bool cond)
     return 10;
 }
 
-// Return instruction code (takes up 10 cycles)
+// Logic for RET instruction
 int BeeZ80::ret()
 {
     pc = pop_stack();
     return 10;
+}
+
+// Logic for RST instruction
+int BeeZ80::rst(uint16_t addr)
+{
+    push_stack(pc);
+    pc = addr;
+    return 11;
 }
 
 int BeeZ80::ret_cond(bool cond)
@@ -1172,29 +1180,38 @@ string BeeZ80::disassembleinstr(uint16_t addr)
 	case 0xC3: instr << "JP " << hex << (int)imm_word; break;
 	case 0xC4: instr << "CALL NZ, " << hex << (int)imm_word; break;
 	case 0xC5: instr << "PUSH BC"; break;
+	case 0xC6: instr << "ADD A, " << hex << (int)imm_byte; break;
+	case 0xC7: instr << "RST 00H"; break;
 	case 0xC8: instr << "RET Z"; break;
 	case 0xC9: instr << "RET"; break;
 	case 0xCA: instr << "JP Z, " << hex << (int)imm_word; break;
 	case 0xCC: instr << "CALL Z, " << hex << (int)imm_word; break;
 	case 0xCD: instr << "CALL " << hex << (int)imm_word; break;
+	case 0xCE: instr << "ADC A, " << hex << (int)imm_byte; break;
+	case 0xCF: instr << "RST 08H"; break;
 	case 0xD0: instr << "RET NC"; break;
 	case 0xD1: instr << "POP DE"; break;
 	case 0xD2: instr << "JP NC, " << hex << (int)imm_word; break;
 	case 0xD3: instr << "OUT " << hex << (int)imm_byte << ", A"; break;
 	case 0xD4: instr << "CALL NC, " << hex << (int)imm_word; break;
 	case 0xD5: instr << "PUSH DE"; break;
+	case 0xD6: instr << "SUB " << hex << (int)imm_byte; break;
+	case 0xD7: instr << "RST 10H"; break;
 	case 0xD8: instr << "RET C"; break;
 	case 0xD9: instr << "EXX"; break;
 	case 0xDA: instr << "JP C, " << hex << (int)imm_word; break;
 	case 0xDB: instr << "IN A, " << hex << (int)imm_byte; break;
 	case 0xDC: instr << "CALL C, " << hex << (int)imm_word; break;
 	case 0xDD: instr << disassembleinstrindex(pc_val, false); break;
+	case 0xDE: instr << "SBC A, " << hex << (int)imm_byte; break;
+	case 0xDF: instr << "RST 18H"; break;
 	case 0xE0: instr << "RET PO"; break;
 	case 0xE1: instr << "POP HL"; break;
 	case 0xE2: instr << "JP PO, " << hex << (int)imm_word; break;
 	case 0xE4: instr << "CALL PO, " << hex << (int)imm_word; break;
 	case 0xE5: instr << "PUSH HL"; break;
 	case 0xE6: instr << "AND " << hex << (int)imm_byte; break;
+	case 0xE7: instr << "RST 20H"; break;
 	case 0xE8: instr << "RET PE"; break;
 	case 0xE9: instr << "JP HL"; break;
 	case 0xEA: instr << "JP PE, " << hex << (int)imm_word; break;
@@ -1202,6 +1219,7 @@ string BeeZ80::disassembleinstr(uint16_t addr)
 	case 0xEC: instr << "CALL PE, " << hex << (int)imm_word; break;
 	case 0xED: instr << disassembleinstrextended(pc_val); break;
 	case 0xEE: instr << "XOR " << hex << (int)imm_byte; break;
+	case 0xEF: instr << "RST 28H"; break;
 	case 0xF0: instr << "RET P"; break;
 	case 0xF1: instr << "POP AF"; break;
 	case 0xF2: instr << "JP P, " << hex << (int)imm_word; break;
@@ -1209,12 +1227,14 @@ string BeeZ80::disassembleinstr(uint16_t addr)
 	case 0xF4: instr << "CALL P, " << hex << (int)imm_word; break;
 	case 0xF5: instr << "PUSH AF"; break;
 	case 0xF6: instr << "OR " << hex << (int)imm_byte; break;
+	case 0xF7: instr << "RST 30H"; break;
 	case 0xF8: instr << "RET M"; break;
 	case 0xF9: instr << "LD SP, HL"; break;
 	case 0xFA: instr << "JP M, " << hex << (int)imm_word; break;
 	case 0xFC: instr << "CALL M, " << hex << (int)imm_word; break;
 	case 0xFD: instr << disassembleinstrindex(pc_val, true); break;
 	case 0xFE: instr << "CP " << hex << (int)imm_byte; break;
+	case 0xFF: instr << "RST 38H"; break;
 	default: instr << "unknown"; break;
     }
 
@@ -1487,12 +1507,14 @@ int BeeZ80::executenextopcode(uint8_t opcode)
 	case 0xC4: cycle_count = call(!iszero()); break; // CALL NZ, imm16
 	case 0xC5: cycle_count = push_stack(bc.getreg()); break; // PUSH BC
 	case 0xC6: arith_add(getimmByte()); cycle_count = 7; break; // ADD A, imm8
+	case 0xC7: cycle_count = rst(0x00); break; // RST 00H
 	case 0xC8: cycle_count = ret_cond(iszero()); break; // RET Z
 	case 0xC9: cycle_count = ret(); break; // RET
 	case 0xCA: cycle_count = jump(getimmWord(), iszero()); break; // JP Z, imm16
 	case 0xCC: cycle_count = call(iszero()); break; // CALL Z, imm16
 	case 0xCD: cycle_count = call(); break; // CALL imm16
 	case 0xCE: arith_adc(getimmByte()); cycle_count = 7; break; // ADC A, imm8
+	case 0xCF: cycle_count = rst(0x08); break; // RST 08H
 	case 0xD0: cycle_count = ret_cond(!iscarry()); break; // RET NC
 	case 0xD1: de.setreg(pop_stack()); cycle_count = 10; break; // POP DE
 	case 0xD2: cycle_count = jump(getimmWord(), !iscarry()); break; // JP NC, imm16
@@ -1500,6 +1522,7 @@ int BeeZ80::executenextopcode(uint8_t opcode)
 	case 0xD4: cycle_count = call(!iscarry()); break; // CALL NC, imm16
 	case 0xD5: cycle_count = push_stack(de.getreg()); break; // PUSH DE
 	case 0xD6: arith_sub(getimmByte()); cycle_count = 7; break; // SUB imm8
+	case 0xD7: cycle_count = rst(0x10); break; // RST 10H
 	case 0xD8: cycle_count = ret_cond(iscarry()); break; // RET C
 	case 0xD9: cycle_count = exx(); break; // EXX
 	case 0xDA: cycle_count = jump(getimmWord(), iscarry()); break; // JP C, imm16
@@ -1507,12 +1530,14 @@ int BeeZ80::executenextopcode(uint8_t opcode)
 	case 0xDC: cycle_count = call(iscarry()); break; // CALL C, imm16
 	case 0xDD: cycle_count = executenextindexopcode(getOpcode(), false); break; // IX opcodes
 	case 0xDE: arith_sbc(getimmByte()); cycle_count = 7; break; // SBC A, imm8
+	case 0xDF: cycle_count = rst(0x18); break; // RST 18H
 	case 0xE0: cycle_count = ret_cond(!ispariflow()); break; // RET PO
 	case 0xE1: hl.setreg(pop_stack()); cycle_count = 10; break; // POP HL
 	case 0xE2: cycle_count = jump(getimmWord(), !ispariflow()); break; // JP PO, imm16
 	case 0xE4: cycle_count = call(!ispariflow()); break; // CALL PO, imm16
 	case 0xE5: cycle_count = push_stack(hl.getreg()); break; // PUSH HL
 	case 0xE6: logical_and(getimmByte()); cycle_count = 7; break; // AND imm8
+	case 0xE7: cycle_count = rst(0x20); break; // RST 20H
 	case 0xE8: cycle_count = ret_cond(ispariflow()); break; // RET PE
 	case 0xE9: pc = hl.getreg(); cycle_count = 4; break; // JP HL
 	case 0xEA: cycle_count = jump(getimmWord(), ispariflow()); break; // JP PE, imm16
@@ -1520,6 +1545,7 @@ int BeeZ80::executenextopcode(uint8_t opcode)
 	case 0xEC: cycle_count = call(ispariflow()); break; // CALL PE, imm16
 	case 0xED: cycle_count = executenextextendedopcode(getOpcode()); break; // Extended opcodes
 	case 0xEE: logical_xor(getimmByte()); cycle_count = 7; break; // XOR imm8
+	case 0xEF: cycle_count = rst(0x28); break; // RST 28H
 	case 0xF0: cycle_count = ret_cond(!issign()); break; // RET P
 	case 0xF1: af.setreg(pop_stack()); cycle_count = 10; break; // POP AF
 	case 0xF2: cycle_count = jump(getimmWord(), !issign()); break; // JP P, imm16
@@ -1532,6 +1558,7 @@ int BeeZ80::executenextopcode(uint8_t opcode)
 	case 0xF4: cycle_count = call(!issign()); break; // CALL P, imm16
 	case 0xF5: cycle_count = push_stack(af.getreg()); break; // PUSH AF
 	case 0xF6: logical_or(getimmByte()); cycle_count = 7; break; // OR imm8
+	case 0xF7: cycle_count = rst(0x30); break; // RST 30H
 	case 0xF8: cycle_count = ret_cond(issign()); break; // RET M
 	case 0xF9: sp = hl.getreg(); cycle_count = 6; break; // LD SP, HL
 	case 0xFA: cycle_count = jump(getimmWord(), issign()); break; // JP M, imm16
@@ -1539,6 +1566,7 @@ int BeeZ80::executenextopcode(uint8_t opcode)
 	case 0xFC: cycle_count = call(issign()); break; // CALL M, imm16
 	case 0xFD: cycle_count = executenextindexopcode(getOpcode(), true); break; // IY opcodes
 	case 0xFE: arith_cmp(getimmByte()); cycle_count = 7; break; // CP imm8
+	case 0xFF: cycle_count = rst(0x38); break; // RST 38H
 	default: unrecognizedopcode(opcode); cycle_count = 0; break;
     }
 
