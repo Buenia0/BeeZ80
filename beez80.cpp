@@ -1054,7 +1054,7 @@ int BeeZ80::otir()
 {
     outi();
 
-    if (bc.getreg() > 0)
+    if (bc.gethi() > 0)
     {
 	pc -= 2;
 	return 21;
