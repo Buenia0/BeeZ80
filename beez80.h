@@ -224,6 +224,7 @@ namespace beez80
 	    void arith_add(uint8_t val);
 	    void arith_adc(uint8_t val);
 	    void arith_addhl(uint16_t val);
+	    void arith_addindex(BeeZ80Register &index, uint16_t val);
 	    void arith_sub(uint8_t val);
 	    void arith_sbc(uint8_t val);
 	    void arith_cmp(uint8_t val);
@@ -232,6 +233,12 @@ namespace beez80
 	    void logical_xor(uint8_t val);
 	    uint8_t inc_reg(uint8_t val);
 	    uint8_t dec_reg(uint8_t val);
+
+	    // LDI/OUTI operations
+	    int ldi();
+	    int outi();
+	    int ldir();
+	    int otir();
 
 	    // Internal code for arithmetic operations
 	    // Note: "carry" defaults to false in this implementation
@@ -288,6 +295,9 @@ namespace beez80
 
 	    // Variable to keep track of whether or not the CPU is halted
 	    bool is_halted = false;
+
+	    // Variable for memory pointer
+	    uint16_t mem_ptr = 0;
     };
 	
 };
