@@ -100,19 +100,25 @@ void BeeZ80::init(uint16_t init_pc)
     // Initialize everything except for the program counter to 0
 
     // Main registers and stack pointer
-    af.setreg(0xFFFF);
+    af.setreg(0x0040);
     bc.setreg(0x0000);
     de.setreg(0x0000);
     hl.setreg(0x0000);
-    sp = 0xFFFF;
+    sp = 0x0000;
 
     // Interrupt and refresh registers
     interrupt = 0;
     refresh = 0;
+    interrupt_mode = 0;
+    interrupt_one = false;
+    interrupt_two = false;
+
+    // Halted flag
+    is_halted = false;
 
     // IX and IY registers
-    ix.setreg(0x0000);
-    iy.setreg(0x0000);
+    ix.setreg(0xFFFF);
+    iy.setreg(0xFFFF);
 
     // Shadow registers
     afs.setreg(0x0000);
@@ -253,8 +259,12 @@ void BeeZ80::generate_interrupt(uint8_t data)
     interrupt_data = data;
 }
 
+// Prints MAME-style debug output (and disassembly of current instruction, if desired) to stdout
 void BeeZ80::debugoutput(bool printdisassembly)
 {
+    cout << "PC: " << hex << (int)pc << endl;
+    cout << "SP: " << hex << (int)sp << endl;
+
     cout << "AF: " << hex << (int)af.getreg() << endl;
     cout << "BC: " << hex << (int)bc.getreg() << endl;
     cout << "DE: " << hex << (int)de.getreg() << endl;
@@ -268,10 +278,14 @@ void BeeZ80::debugoutput(bool printdisassembly)
     cout << "DE2: " << hex << (int)(des.getreg()) << endl;
     cout << "HL2: " << hex << (int)(hls.getreg()) << endl;
 
-    cout << "PC: " << hex << (int)pc << endl;
-    cout << "SP: " << hex << (int)sp << endl;
-    cout << "Interrupt: " << hex << (int)interrupt << endl;
-    cout << "Refresh: " << hex << (int)refresh << endl;
+    cout << "WZ: " << hex << (int)mem_ptr << endl;
+    cout << "Refresh (R): " << hex << (int)refresh << endl;
+    cout << "Interrupt (I): " << hex << (int)interrupt << endl;
+
+    cout << "Interrupt mode (IM): " << dec << (int)interrupt_mode << endl;
+    cout << "IFF1: " << dec << (int)interrupt_one << endl;
+    cout << "IFF2: " << dec << (int)interrupt_two << endl;
+    cout << "HALT: " << dec << (int)is_halted << endl;
 
     if (printdisassembly)
     {
