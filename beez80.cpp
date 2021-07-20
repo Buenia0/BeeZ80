@@ -1077,6 +1077,15 @@ int BeeZ80::otir()
     return 16;
 }
 
+int BeeZ80::cpl()
+{
+    af.sethi(~af.gethi());
+    setsubtract(true);
+    sethalf(true);
+    setxy(af.gethi());
+    return 4;
+}
+
 string BeeZ80::disassembleinstr(uint16_t addr)
 {
     stringstream instr;
@@ -1135,6 +1144,7 @@ string BeeZ80::disassembleinstr(uint16_t addr)
 	case 0x2C: instr << "INC L"; break;
 	case 0x2D: instr << "DEC L"; break;
 	case 0x2E: instr << "LD L, " << hex << (int)imm_byte; break;
+	case 0x2F: instr << "CPL"; break;
 	case 0x30: instr << "JR NC, " << hex << (int)imm_byte; break;
 	case 0x31: instr << "LD SP, " << hex << (int)imm_word; break;
 	case 0x32: instr << "LD (" << hex << (int)imm_word << "), A"; break;
@@ -1514,6 +1524,7 @@ int BeeZ80::executenextopcode(uint8_t opcode)
 	case 0x2C: hl.setlo(inc_reg(hl.getlo())); cycle_count = 4; break; // INC L
 	case 0x2D: hl.setlo(dec_reg(hl.getlo())); cycle_count = 4; break; // DEC L
 	case 0x2E: hl.setlo(getimmByte()); cycle_count = 7; break; // LD L, imm8
+	case 0x2F: cycle_count = cpl(); break; // CPL
 	case 0x30: cycle_count = jr(!iscarry()); break; // JR NC, imm8
 	case 0x31: sp = getimmWord(); cycle_count = 10; break; // LD SP, imm16
 	case 0x32:

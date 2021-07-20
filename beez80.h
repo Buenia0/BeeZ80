@@ -240,6 +240,10 @@ namespace beez80
 	    int ldir();
 	    int otir();
 
+	    // Misc instructions
+	    // TODO: Implement the rest of these operations
+	    int cpl();
+
 	    // Internal code for arithmetic operations
 	    // Note: "carry" defaults to false in this implementation
 	    // to make calculations with plain addition easier
