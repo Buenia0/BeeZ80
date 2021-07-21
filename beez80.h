@@ -138,15 +138,20 @@ namespace beez80
 	    // Contains the main logic for the Z80 instruction set
 	    int executenextopcode(uint8_t opcode);
 	    int executenextindexopcode(uint8_t opcode, bool is_fd);
+	    int executenextbitopcode(uint8_t opcode);
+	    int executenextindexbitopcode(uint8_t opcode, uint16_t addr, bool is_fd);
 	    int executenextextendedopcode(uint8_t opcode);
 
 	    // Prints the unrecognized instruction and then exits
 	    void unrecognizedopcode(uint8_t opcode);
 	    void unrecognizedprefixopcode(uint8_t prefix, uint8_t opcode);
+	    void unrecognizedprefixbitopcode(bool is_fd, uint8_t opcode);
 
 	    // Helper functions for disassembler
 	    string disassembleinstrindex(uint16_t addr, bool is_fd);
 	    string disassembleinstrextended(uint16_t addr);
+	    string disassembleinstrbit(uint16_t addr);
+	    string disassembleinstrbitindex(uint16_t addr, bool is_fd);
 
 	    // Internal functions for memory and I/O access
 

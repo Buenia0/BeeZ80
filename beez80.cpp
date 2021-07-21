@@ -1298,6 +1298,7 @@ string BeeZ80::disassembleinstr(uint16_t addr)
 	case 0xC8: instr << "RET Z"; break;
 	case 0xC9: instr << "RET"; break;
 	case 0xCA: instr << "JP Z, " << hex << (int)imm_word; break;
+	case 0xCB: instr << disassembleinstrbit(pc_val); break;
 	case 0xCC: instr << "CALL Z, " << hex << (int)imm_word; break;
 	case 0xCD: instr << "CALL " << hex << (int)imm_word; break;
 	case 0xCE: instr << "ADC A, " << hex << (int)imm_byte; break;
@@ -1391,10 +1392,76 @@ string BeeZ80::disassembleinstrindex(uint16_t addr, bool is_fd)
 	case 0x75: instr << "LD (" << index_reg << " + " << hex << (int)imm_byte << "), L"; break;
 	case 0x77: instr << "LD (" << index_reg << " + " << hex << (int)imm_byte << "), A"; break;
 	case 0x7E: instr << "LD A, (" << index_reg << " + " << hex << (int)imm_byte << ")"; break;
+	case 0xCB: instr << disassembleinstrbitindex(pc_val, is_fd); break;
 	case 0xE1: instr << "POP " << index_reg; break;
 	case 0xE5: instr << "PUSH " << index_reg; break;
 	case 0xE9: instr << "JP " << index_reg; break;
 	default: instr << "unknown " << index_reg << ", " << hex << (int)opcode; break;
+    }
+
+    return instr.str();
+}
+
+string BeeZ80::disassembleinstrbit(uint16_t addr)
+{
+    stringstream instr;
+
+    uint8_t opcode = readByte(addr);
+    int opcode_type = ((opcode >> 3) & 0x1F);
+
+    string instr_reg = "";
+
+    switch ((opcode & 0x7))
+    {
+	case 0: instr_reg = "B"; break;
+	case 1: instr_reg = "C"; break;
+	case 2: instr_reg = "D"; break;
+	case 3: instr_reg = "E"; break;
+	case 4: instr_reg = "H"; break;
+	case 5: instr_reg = "L"; break;
+	case 6: instr_reg = "(HL)"; break;
+	case 7: instr_reg = "A"; break;
+	default: instr_reg = "unk"; break; // This shouldn't happen
+    }
+
+    switch (opcode_type)
+    {
+	default: instr << "unknown bit, " << hex << (int)opcode; break;
+    }
+    
+    return instr.str();
+}
+
+string BeeZ80::disassembleinstrbitindex(uint16_t addr, bool is_fd)
+{
+    stringstream instr;
+
+    string index_reg = (is_fd) ? "IY" : "IX";
+
+    uint8_t imm_byte = readByte(addr);
+
+    uint16_t pc_val = (addr + 1);
+    uint8_t opcode = readByte(pc_val);
+    int opcode_type = ((opcode >> 3) & 0x1F);
+
+    string instr_reg = "";
+
+    switch ((opcode & 0x7))
+    {
+	case 0: instr_reg = "B"; break;
+	case 1: instr_reg = "C"; break;
+	case 2: instr_reg = "D"; break;
+	case 3: instr_reg = "E"; break;
+	case 4: instr_reg = "H"; break;
+	case 5: instr_reg = "L"; break;
+	case 6: instr_reg = "(HL)"; break;
+	case 7: instr_reg = "A"; break;
+	default: instr_reg = "unk"; break; // This shouldn't happen
+    }
+
+    switch (opcode_type)
+    {
+	default: instr << "unknown " << index_reg << " bit, " << hex << (int)opcode; break;
     }
 
     return instr.str();
@@ -1694,6 +1761,7 @@ int BeeZ80::executenextopcode(uint8_t opcode)
 	case 0xC8: cycle_count = ret_cond(iszero()); break; // RET Z
 	case 0xC9: cycle_count = ret(); break; // RET
 	case 0xCA: cycle_count = jump(getimmWord(), iszero()); break; // JP Z, imm16
+	case 0xCB: cycle_count = executenextbitopcode(getOpcode()); break; // CB opcodes
 	case 0xCC: cycle_count = call(iszero()); break; // CALL Z, imm16
 	case 0xCD: cycle_count = call(); break; // CALL imm16
 	case 0xCE: arith_adc(getimmByte()); cycle_count = 7; break; // ADC A, imm8
@@ -1784,6 +1852,36 @@ int BeeZ80::executenextopcode(uint8_t opcode)
     return cycle_count;
 }
 
+int BeeZ80::executenextbitopcode(uint8_t opcode)
+{
+    // Special thanks to ITotalJustice (https://github.com/ITotalJustice)
+    // for the assist in the bit instruction decoding
+    int cycle_count = 0;
+    int opcode_type = ((opcode >> 3) & 0x1F);
+
+    switch (opcode_type)
+    {
+	default: unrecognizedprefixopcode(0xCB, opcode); cycle_count = 0; break;
+    }
+
+    return cycle_count;
+}
+
+int BeeZ80::executenextindexbitopcode(uint8_t opcode, uint16_t addr, bool is_fd)
+{
+    // Special thanks to ITotalJustice (https://github.com/ITotalJustice)
+    // for the assist in the bit instruction decoding
+    int cycle_count = 0;
+    int opcode_type = ((opcode >> 3) & 0x1F);
+
+    switch (opcode_type)
+    {
+	default: unrecognizedprefixbitopcode(is_fd, opcode); cycle_count = 0; break;
+    }
+
+    return cycle_count;
+}
+
 // Emulates the Zilog Z80's DD/FD-prefix instruction (IX/IY instructions)
 int BeeZ80::executenextindexopcode(uint8_t opcode, bool is_fd)
 {
@@ -1815,6 +1913,13 @@ int BeeZ80::executenextindexopcode(uint8_t opcode, bool is_fd)
 	case 0x75: writeByte(displacement(indexreg.getreg()), hl.getlo()); cycle_count = 19; break; // LD (IX/IY + imm8), L
 	case 0x77: writeByte(displacement(indexreg.getreg()), af.gethi()); cycle_count = 19; break; // LD (IX/IY + imm8), A
 	case 0x7E: af.sethi(readByte(displacement(indexreg.getreg()))); cycle_count = 19; break; // LD A, (IX/IY + imm8)
+	case 0xCB:
+	{
+	    uint16_t cb_addr = displacement(indexreg.getreg());
+	    uint8_t cb_instr = getimmByte();
+	    cycle_count = executenextindexbitopcode(cb_instr, cb_addr, is_fd);
+	}
+	break;
 	case 0xE1: indexreg.setreg(pop_stack()); cycle_count = 14; break; // POP IX/IY
 	case 0xE5: push_stack(indexreg.getreg()); cycle_count = 15; break; // PUSH IX/IY
 	case 0xE9: pc = indexreg.getreg(); cycle_count = 8; break; // JP IX/IY
@@ -1868,6 +1973,16 @@ void BeeZ80::unrecognizedopcode(uint8_t opcode)
 void BeeZ80::unrecognizedprefixopcode(uint8_t prefix, uint8_t opcode)
 {
     uint16_t instr = ((prefix << 8) | opcode);
+    cout << "Fatal: Unrecognized prefix opcode of " << hex << (int)instr << endl;
+    exit(1);
+}
+
+// This function is called when the emulated Zilog Z80 encounters
+// a CPU prefix bit (i.e. 0xDDCB/FDCB) instruction it doesn't recgonize
+void BeeZ80::unrecognizedprefixbitopcode(bool is_fd, uint8_t opcode)
+{
+    uint16_t prefix = (is_fd) ? 0xFDCB : 0xDDCB;
+    uint32_t instr = ((prefix << 16) | opcode);
     cout << "Fatal: Unrecognized prefix opcode of " << hex << (int)instr << endl;
     exit(1);
 }
