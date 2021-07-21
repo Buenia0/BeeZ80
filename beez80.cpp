@@ -1086,6 +1086,17 @@ int BeeZ80::cpl()
     return 4;
 }
 
+uint8_t BeeZ80::cb_bit(uint8_t value, int bit)
+{
+    uint8_t result = (value & (1 << bit));
+    setsubtract(false);
+    setzs(result);
+    setpariflow((result == 0));
+    sethalf(true);
+    setxy(value);
+    return result;
+}
+
 string BeeZ80::disassembleinstr(uint16_t addr)
 {
     stringstream instr;
@@ -1426,6 +1437,19 @@ string BeeZ80::disassembleinstrbit(uint16_t addr)
 
     switch (opcode_type)
     {
+	case 0x08:
+	case 0x09:
+	case 0x0A:
+	case 0x0B:
+	case 0x0C:
+	case 0x0D:
+	case 0x0E:
+	case 0x0F:
+	{
+	    int opcode_bit = ((opcode >> 3) & 0x7);
+	    instr << "BIT " << dec << opcode_bit << ", " << instr_reg;
+	}
+	break;
 	default: instr << "unknown bit, " << hex << (int)opcode; break;
     }
     
@@ -1461,6 +1485,19 @@ string BeeZ80::disassembleinstrbitindex(uint16_t addr, bool is_fd)
 
     switch (opcode_type)
     {
+	case 0x08:
+	case 0x09:
+	case 0x0A:
+	case 0x0B:
+	case 0x0C:
+	case 0x0D:
+	case 0x0E:
+	case 0x0F:
+	{
+	    int opcode_bit = ((opcode >> 3) & 0x7);
+	    instr << "BIT " << dec << opcode_bit << ", (" << index_reg << " + " << hex << (int)imm_byte << ")";
+	}
+	break;
 	default: instr << "unknown " << index_reg << " bit, " << hex << (int)opcode; break;
     }
 
@@ -1858,9 +1895,60 @@ int BeeZ80::executenextbitopcode(uint8_t opcode)
     // for the assist in the bit instruction decoding
     int cycle_count = 0;
     int opcode_type = ((opcode >> 3) & 0x1F);
+    int opcode_reg = (opcode & 0x7);
+
+    uint8_t value = 0;
+
+    switch (opcode_reg)
+    {
+	case 0: value = bc.gethi(); break;
+	case 1: value = bc.getlo(); break;
+	case 2: value = de.gethi(); break;
+	case 3: value = de.getlo(); break;
+	case 4: value = hl.gethi(); break;
+	case 5: value = hl.getlo(); break;
+	case 6: value = readByte(hl.getreg()); break;
+	case 7: value = af.gethi(); break;
+	default: value = 0; break; // This shouldn't happen
+    }
 
     switch (opcode_type)
     {
+	case 0x08:
+	case 0x09:
+	case 0x0A:
+	case 0x0B:
+	case 0x0C:
+	case 0x0D:
+	case 0x0E:
+	case 0x0F:
+	{
+	    int op_bit = ((opcode >> 3) & 0x7);
+	    uint8_t result = cb_bit(value, op_bit);
+
+	    switch (opcode_reg)
+	    {
+		case 0: bc.sethi(result); break;
+		case 1: bc.setlo(result); break;
+		case 2: de.sethi(result); break;
+		case 3: de.setlo(result); break;
+		case 4: hl.sethi(result); break;
+		case 5: hl.setlo(result); break;
+		case 6: writeByte(hl.getreg(), result); break;
+		case 7: af.sethi(result); break;
+	    }
+
+	    if (opcode_reg == 6)
+	    {
+		setxy((mem_ptr >> 8));
+		cycle_count = 12;
+	    }
+	    else
+	    {
+		cycle_count = 8;
+	    }
+	}
+	break; // BIT n, reg
 	default: unrecognizedprefixopcode(0xCB, opcode); cycle_count = 0; break;
     }
 
@@ -1874,8 +1962,25 @@ int BeeZ80::executenextindexbitopcode(uint8_t opcode, uint16_t addr, bool is_fd)
     int cycle_count = 0;
     int opcode_type = ((opcode >> 3) & 0x1F);
 
+    uint8_t value = readByte(addr);
+
     switch (opcode_type)
     {
+	case 0x08:
+	case 0x09:
+	case 0x0A:
+	case 0x0B:
+	case 0x0C:
+	case 0x0D:
+	case 0x0E:
+	case 0x0F:
+	{
+	    int op_bit = ((opcode >> 3) & 0x7);
+	    cb_bit(value, op_bit);
+	    setxy((addr >> 8));
+	    cycle_count = 20;
+	}
+	break;
 	default: unrecognizedprefixbitopcode(is_fd, opcode); cycle_count = 0; break;
     }
 
