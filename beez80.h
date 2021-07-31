@@ -233,8 +233,10 @@ namespace beez80
 	    void arith_adc(uint8_t val);
 	    void arith_addhl(uint16_t val);
 	    void arith_addindex(BeeZ80Register &index, uint16_t val);
+	    void arith_adc16(uint16_t val);
 	    void arith_sub(uint8_t val);
 	    void arith_sbc(uint8_t val);
+	    void arith_sbc16(uint16_t val);
 	    void arith_cmp(uint8_t val);
 	    void logical_and(uint8_t val);
 	    void logical_or(uint8_t val);
