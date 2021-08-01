@@ -1102,6 +1102,106 @@ int BeeZ80::cpl()
     return 4;
 }
 
+uint8_t BeeZ80::cb_rlc(uint8_t value)
+{
+    bool old = testbit(value, 7);
+    uint8_t result = ((value << 1) | old);
+    setzs(result);
+    setpariflow(parity(result));
+    setsubtract(false);
+    sethalf(false);
+    setcarry(old);
+    setxy(result);
+    return result;
+}
+
+uint8_t BeeZ80::cb_rrc(uint8_t value)
+{
+    bool old = testbit(value, 0);
+    uint8_t result = ((value >> 1) | (old << 7));
+    setzs(result);
+    setpariflow(parity(result));
+    setsubtract(false);
+    sethalf(false);
+    setcarry(old);
+    setxy(result);
+    return result;
+}
+
+uint8_t BeeZ80::cb_rl(uint8_t value)
+{
+    bool carry = iscarry();
+    setcarry(testbit(value, 7));
+    uint8_t result = ((value << 1) | carry);
+    setzs(result);
+    setpariflow(parity(result));
+    setsubtract(false);
+    sethalf(false);
+    setxy(result);
+    return result;
+}
+
+uint8_t BeeZ80::cb_rr(uint8_t value)
+{
+    bool carry = iscarry();
+    setcarry(testbit(value, 0));
+    uint8_t result = ((value >> 1) | (carry << 7));
+    setzs(result);
+    setpariflow(parity(result));
+    setsubtract(false);
+    sethalf(false);
+    setxy(result);
+    return result;
+}
+
+uint8_t BeeZ80::cb_sla(uint8_t value)
+{
+    setcarry(testbit(value, 7));
+    uint8_t result = (value << 1);
+    setzs(result);
+    setpariflow(parity(result));
+    setsubtract(false);
+    sethalf(false);
+    setxy(result);
+    return result;
+}
+
+uint8_t BeeZ80::cb_sll(uint8_t value)
+{
+    setcarry(testbit(value, 7));
+    uint8_t result = ((value << 1) | 1);
+    setzs(result);
+    setpariflow(parity(result));
+    setsubtract(false);
+    sethalf(false);
+    setxy(result);
+    return result;
+}
+
+uint8_t BeeZ80::cb_sra(uint8_t value)
+{
+    setcarry(testbit(value, 0));
+    uint8_t result = ((value >> 1) | (value & 0x80)); // Leave bit 7 of result unchanged
+    setzs(result);
+    setpariflow(parity(result));
+    setsubtract(false);
+    sethalf(false);
+    setxy(result);
+    return result;
+}
+
+uint8_t BeeZ80::cb_srl(uint8_t value)
+{
+    setcarry(testbit(value, 0));
+    uint8_t result = (value >> 1);
+    setzs(result);
+    setpariflow(parity(result));
+    setsubtract(false);
+    sethalf(false);
+    setxy(result);
+    return result;
+}
+
 uint8_t BeeZ80::cb_bit(uint8_t value, int bit)
 {
     uint8_t result = (value & (1 << bit));
@@ -1559,22 +1659,30 @@ string BeeZ80::disassembleinstrextended(uint16_t addr)
 
     switch (opcode)
     {
+	case 0x41: instr << "OUT (C), B"; break;
 	case 0x42: instr << "SBC HL, BC"; break;
 	case 0x46: instr << "IM 0"; break;
 	case 0x47: instr << "LD I, A"; break;
+	case 0x49: instr << "OUT (C), C"; break;
 	case 0x4A: instr << "ADC HL, BC"; break;
+	case 0x51: instr << "OUT (C), D"; break;
 	case 0x52: instr << "SBC HL, DE"; break;
 	case 0x56: instr << "IM 1"; break;
+	case 0x59: instr << "OUT (C), E"; break;
 	case 0x5A: instr << "ADC HL, DE"; break;
 	case 0x5B: instr << "LD DE, " << hex << (int)imm_word; break;
 	case 0x5E: instr << "IM 2"; break;
+	case 0x61: instr << "OUT (C), H"; break;
 	case 0x62: instr << "SBC HL, HL"; break;
 	case 0x66: instr << "IM 0"; break;
+	case 0x69: instr << "OUT (C), L"; break;
 	case 0x6A: instr << "ADC HL, HL"; break;
 	case 0x6B: instr << "LD HL, " << hex << (int)imm_word; break;
+	case 0x71: instr << "OUT (C), 0"; break;
 	case 0x72: instr << "SBC HL, SP"; break;
 	case 0x73: instr << "LD " << hex << (int)imm_word << ", SP"; break;
 	case 0x76: instr << "IM 1"; break;
+	case 0x79: instr << "OUT (C), A"; break;
 	case 0x7A: instr << "ADC HL, SP"; break;
 	case 0x7B: instr << "LD SP, " << hex << (int)imm_word; break;
 	case 0x7E: instr << "IM 2"; break;
@@ -1946,15 +2054,16 @@ int BeeZ80::executenextopcode(uint8_t opcode)
 
 int BeeZ80::executenextbitopcode(uint8_t opcode)
 {
-    // Special thanks to ITotalJustice (https://github.com/ITotalJustice)
-    // for the assist in the bit instruction decoding
-    int cycle_count = 0;
-    int opcode_type = ((opcode >> 3) & 0x1F);
-    int opcode_reg = (opcode & 0x7);
+    int cycle_count = 8;
+
+    // Instruction decoding taken from http://z80.info/decoding.htm#cb
+    int opx = ((opcode >> 6) & 0x3);
+    int opy = ((opcode >> 3) & 0x7);
+    int opz = (opcode & 0x7);
 
     uint8_t value = 0;
 
-    switch (opcode_reg)
+    switch (opz)
     {
 	case 0: value = bc.gethi(); break;
 	case 1: value = bc.getlo(); break;
@@ -1964,117 +2073,60 @@ int BeeZ80::executenextbitopcode(uint8_t opcode)
 	case 5: value = hl.getlo(); break;
 	case 6: value = readByte(hl.getreg()); break;
 	case 7: value = af.gethi(); break;
-	default: value = 0; break; // This shouldn't happen
+	default: unrecognizedprefixopcode(0xCB, opcode); cycle_count = 0; break; // This shouldn't happen
     }
 
-    switch (opcode_type)
+    uint8_t result = 0;
+
+    switch (opx)
     {
-	case 0x08:
-	case 0x09:
-	case 0x0A:
-	case 0x0B:
-	case 0x0C:
-	case 0x0D:
-	case 0x0E:
-	case 0x0F:
+	case 0:
 	{
-	    int op_bit = ((opcode >> 3) & 0x7);
-	    uint8_t result = cb_bit(value, op_bit);
-
-	    switch (opcode_reg)
+	    switch (opy)
 	    {
-		case 0: bc.sethi(result); break;
-		case 1: bc.setlo(result); break;
-		case 2: de.sethi(result); break;
-		case 3: de.setlo(result); break;
-		case 4: hl.sethi(result); break;
-		case 5: hl.setlo(result); break;
-		case 6: writeByte(hl.getreg(), result); break;
-		case 7: af.sethi(result); break;
+		case 0: result = cb_rlc(value); break;
+		case 1: result = cb_rrc(value); break;
+		case 2: result = cb_rl(value); break;
+		case 3: result = cb_rr(value); break;
+		case 4: result = cb_sla(value); break;
+		case 5: result = cb_sra(value); break;
+		case 6: result = cb_sll(value); break;
+		case 7: result = cb_srl(value); break;
+		default: unrecognizedprefixopcode(0xCB, opcode); cycle_count = 0; break; // This shouldn't happen
 	    }
+	}
+	break; // rot[y] r[z]
+	case 1:
+	{
+	    cb_bit(value, opy);
 
-	    if (opcode_reg == 6)
+	    // In BIT (HL), the XF and YF flags are handled differently
+	    if (opz == 6)
 	    {
 		setxy((mem_ptr >> 8));
-		cycle_count = 12;
-	    }
-	    else
-	    {
-		cycle_count = 8;
+		cycle_count += 4;
 	    }
 	}
-	break; // BIT n, reg
-	case 0x10:
-	case 0x11:
-	case 0x12:
-	case 0x13:
-	case 0x14:
-	case 0x15:
-	case 0x16:
-	case 0x17:
+	break; // BIT y, r[z]
+	case 2: result = resetbit(value, opy); break; // RES y, r[z]
+	case 3: result = setbit(value, opy); break; // SET y, r[z]
+	default: unrecognizedprefixopcode(0xCB, opcode); cycle_count = 0; break; // This shouldn't happen
+    }
+
+    if (opx != 1)
+    {
+	switch (opz)
 	{
-	    int op_bit = ((opcode >> 3) & 0x7);
-
-	    uint8_t result = resetbit(value, op_bit);
-
-	    switch (opcode_reg)
-	    {
-		case 0: bc.sethi(result); break;
-		case 1: bc.setlo(result); break;
-		case 2: de.sethi(result); break;
-		case 3: de.setlo(result); break;
-		case 4: hl.sethi(result); break;
-		case 5: hl.setlo(result); break;
-		case 6: writeByte(hl.getreg(), result); break;
-		case 7: af.sethi(result); break;
-	    }
-
-	    if (opcode_reg == 6)
-	    {
-		cycle_count = 15;
-	    }
-	    else
-	    {
-		cycle_count = 8;
-	    }
+	    case 0: bc.sethi(result); break;
+	    case 1: bc.setlo(result); break;
+	    case 2: de.sethi(result); break;
+	    case 3: de.setlo(result); break;
+	    case 4: hl.sethi(result); break;
+	    case 5: hl.setlo(result); break;
+	    case 6: writeByte(hl.getreg(), result); cycle_count += 7; break;
+	    case 7: af.sethi(result); break;
+	    default: unrecognizedprefixopcode(0xCB, opcode); cycle_count = 0; break; // This shouldn't happen
 	}
-	break; // RES n, reg
-	case 0x18:
-	case 0x19:
-	case 0x1A:
-	case 0x1B:
-	case 0x1C:
-	case 0x1D:
-	case 0x1E:
-	case 0x1F:
-	{
-	    int op_bit = ((opcode >> 3) & 0x7);
-
-	    uint8_t result = setbit(value, op_bit);
-
-	    switch (opcode_reg)
-	    {
-		case 0: bc.sethi(result); break;
-		case 1: bc.setlo(result); break;
-		case 2: de.sethi(result); break;
-		case 3: de.setlo(result); break;
-		case 4: hl.sethi(result); break;
-		case 5: hl.setlo(result); break;
-		case 6: writeByte(hl.getreg(), result); break;
-		case 7: af.sethi(result); break;
-	    }
-
-	    if (opcode_reg == 6)
-	    {
-		cycle_count = 15;
-	    }
-	    else
-	    {
-		cycle_count = 8;
-	    }
-	}
-	break; // SET n, reg
-	default: unrecognizedprefixopcode(0xCB, opcode); cycle_count = 0; break;
     }
 
     return cycle_count;
@@ -2082,31 +2134,69 @@ int BeeZ80::executenextbitopcode(uint8_t opcode)
 
 int BeeZ80::executenextindexbitopcode(uint8_t opcode, uint16_t addr, bool is_fd)
 {
-    // Special thanks to ITotalJustice (https://github.com/ITotalJustice)
-    // for the assist in the bit instruction decoding
     int cycle_count = 0;
-    int opcode_type = ((opcode >> 3) & 0x1F);
-
     uint8_t value = readByte(addr);
 
-    switch (opcode_type)
+    int opx = ((opcode >> 6) & 0x3);
+    int opy = ((opcode >> 3) & 0x7);
+    int opz = (opcode & 0x7);
+
+    uint8_t result = 0;
+
+    switch (opx)
     {
-	case 0x08:
-	case 0x09:
-	case 0x0A:
-	case 0x0B:
-	case 0x0C:
-	case 0x0D:
-	case 0x0E:
-	case 0x0F:
+	case 0:
 	{
-	    int op_bit = ((opcode >> 3) & 0x7);
-	    cb_bit(value, op_bit);
-	    setxy((addr >> 8));
-	    cycle_count = 20;
+	    switch (opy)
+	    {
+		case 0: result = cb_rlc(value); break;
+		case 1: result = cb_rrc(value); break;
+		case 2: result = cb_rl(value); break;
+		case 3: result = cb_rr(value); break;
+		case 4: result = cb_sla(value); break;
+		case 5: result = cb_sra(value); break;
+		case 6: result = cb_sll(value); break;
+		case 7: result = cb_srl(value); break;
+	    }
 	}
-	break;
-	default: unrecognizedprefixbitopcode(is_fd, opcode); cycle_count = 0; break;
+	break; // rot[y] (IX/IY + d)
+	case 1:
+	{
+	    result = cb_bit(value, opy);
+	    setxy((addr >> 8));
+	}
+	break; // BIT y, (IX/IY + d)
+	case 2: result = resetbit(value, opy); break; // RES y, (IX/IY + d)
+	case 3: result = setbit(value, opy); break; // SET y, (IX/IY + d)
+	default: unrecognizedprefixbitopcode(is_fd, opcode); cycle_count = 0; break; // This shouldn't happen
+    }
+
+    // LD r[z], rot[y] (IX/IY + d)
+    // LD r[z], RES y, (IX/IY + d)
+    // LD r[z], SET y, (IX/IY + d)
+    if ((opx != 1) && (opz != 6))
+    {
+	switch (opz)
+	{
+	    case 0: bc.sethi(result); break;
+	    case 1: bc.setlo(result); break;
+	    case 2: de.sethi(result); break;
+	    case 3: de.setlo(result); break;
+	    case 4: hl.sethi(result); break;
+	    case 5: hl.setlo(result); break;
+	    case 6: writeByte(hl.getreg(), result); break;
+	    case 7: af.sethi(result); break;
+	}
+    }
+
+    if (opx == 1)
+    {
+	cycle_count = 20;
+    }
+    else
+    {
+	writeByte(addr, result);
+	cycle_count += 23;
     }
 
     return cycle_count;
@@ -2166,12 +2256,16 @@ int BeeZ80::executenextextendedopcode(uint8_t opcode)
 
     switch (opcode)
     {
+	case 0x41: portOut(bc.getlo(), bc.gethi()); cycle_count = 12; break; // OUT (C), B
 	case 0x42: arith_sbc16(bc.getreg()); cycle_count = 15; break; // SBC HL, BC
 	case 0x46: interrupt_mode = 0; cycle_count = 8; break; // IM 0
 	case 0x47: interrupt = af.gethi(); cycle_count = 9; break; // LD I, A
+	case 0x49: portOut(bc.getlo(), bc.getlo()); cycle_count = 12; break; // OUT (C), C
 	case 0x4A: arith_adc16(bc.getreg()); cycle_count = 15; break; // ADC HL, BC
+	case 0x51: portOut(bc.getlo(), de.gethi()); cycle_count = 12; break; // OUT (C), D
 	case 0x52: arith_sbc16(de.getreg()); cycle_count = 15; break; // SBC HL, DE
 	case 0x56: interrupt_mode = 1; cycle_count = 8; break; // IM 1
+	case 0x59: portOut(bc.getlo(), de.getlo()); cycle_count = 12; break; // OUT (C), E
 	case 0x5A: arith_adc16(de.getreg()); cycle_count = 15; break; // ADC HL, DE
 	case 0x5B:
 	{
@@ -2182,8 +2276,10 @@ int BeeZ80::executenextextendedopcode(uint8_t opcode)
 	}
 	break; // LD DE, (imm16)
 	case 0x5E: interrupt_mode = 2; cycle_count = 8; break; // IM 2
+	case 0x61: portOut(bc.getlo(), hl.gethi()); cycle_count = 12; break; // OUT (C), H
 	case 0x62: arith_sbc16(hl.getreg()); cycle_count = 15; break; // SBC HL, HL
 	case 0x66: interrupt_mode = 0; cycle_count = 8; break; // IM 0
+	case 0x69: portOut(bc.getlo(), hl.getlo()); cycle_count = 12; break; // OUT (C), L
 	case 0x6A: arith_adc16(hl.getreg()); cycle_count = 15; break; // ADC HL, HL
 	case 0x6B:
 	{
@@ -2193,6 +2289,7 @@ int BeeZ80::executenextextendedopcode(uint8_t opcode)
 	    cycle_count = 20;
 	}
 	break; // LD HL, (imm16)
+	case 0x71: portOut(bc.getlo(), 0); cycle_count = 12; break; // OUT (C), 0
 	case 0x72: arith_sbc16(sp); cycle_count = 15; break; // SBC HL, SP
 	case 0x73:
 	{
@@ -2203,6 +2300,13 @@ int BeeZ80::executenextextendedopcode(uint8_t opcode)
 	}
 	break; // LD (imm16), SP
 	case 0x76: interrupt_mode = 1; cycle_count = 8; break; // IM 1
+	case 0x79:
+	{
+	    portOut(bc.getlo(), af.gethi());
+	    mem_ptr = (bc.getreg() + 1);
+	    cycle_count = 12;
+	}
+	break; // OUT (C), A
 	case 0x7A: arith_adc16(sp); cycle_count = 15; break; // ADC HL, SP
 	case 0x7B:
 	{

@@ -219,6 +219,14 @@ namespace beez80
 	    int rra();
 
 	    // Logic for CB instructions
+	    uint8_t cb_rlc(uint8_t value);
+	    uint8_t cb_rrc(uint8_t value);
+	    uint8_t cb_rl(uint8_t value);
+	    uint8_t cb_rr(uint8_t value);
+	    uint8_t cb_sla(uint8_t value);
+	    uint8_t cb_sll(uint8_t value);
+	    uint8_t cb_sra(uint8_t value);
+	    uint8_t cb_srl(uint8_t value);
 	    uint8_t cb_bit(uint8_t value, int bit);
 
 	    // Set zero and sign flags (8-bit version)
