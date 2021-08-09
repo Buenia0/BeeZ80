@@ -96,14 +96,16 @@ class TestInterface : public BeeZ80Interface
 	    memory[addr] = val;
 	}
 
-	uint8_t portIn(uint8_t port)
+	uint8_t portIn(uint16_t port)
 	{
 	    uint8_t temp = 0x00;
+
+	    uint8_t port_val = (port & 0xFF);
 
 	    // Port 0x01 - Receive status byte from control port
 	    // Bit 0 - Data readiness bit (0=Not ready, 1=Ready)
 	    // Bit 1 - Single character bit (0=Print single character, 1=Print string)
-	    if (port == 0x01)
+	    if (port_val == 0x01)
 	    {
 		temp = ((!is_single_char << 1) | is_active);
 	    }
@@ -111,10 +113,11 @@ class TestInterface : public BeeZ80Interface
 	    return temp;
 	}
 
-	void portOut(uint8_t port, uint8_t val)
+	void portOut(uint16_t port, uint8_t val)
 	{
+	    uint8_t port_val = (port & 0xFF);
 	    // Port 0 - End of test port
-	    if (port == 0x00)
+	    if (port_val == 0x00)
 	    {
 		// Value of 0x01 written to this port ends the current test
 		if (val == 0x01)
@@ -125,7 +128,7 @@ class TestInterface : public BeeZ80Interface
 	    // Port 1 - Control port
 	    // Write 0x02 to this port to print a single character
 	    // Write 0x09 to this port to print an entire string
-	    else if (port == 0x01)
+	    else if (port_val == 0x01)
 	    {
 		switch (val)
 		{
@@ -147,7 +150,7 @@ class TestInterface : public BeeZ80Interface
 	    // Port 2 - Data port
 	    // If writing a single character, write character to be printed to this port
 	    // If printing a single string, write the address in memory that the string is located (upper byte first)
-	    else if (port == 0x02)
+	    else if (port_val == 0x02)
 	    {
 		// Error out if control port is not ready for data
 		if (!is_active)

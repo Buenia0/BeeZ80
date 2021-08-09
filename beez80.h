@@ -40,9 +40,9 @@ namespace beez80
 	    // Writes a byte to memory
 	    virtual void writeByte(uint16_t addr, uint8_t val) = 0;
 	    // Reads a byte from an I/O port
-	    virtual uint8_t portIn(uint8_t port) = 0;
+	    virtual uint8_t portIn(uint16_t port) = 0;
 	    // Writes a byte to an I/O port
-	    virtual void portOut(uint8_t port, uint8_t val) = 0;
+	    virtual void portOut(uint16_t port, uint8_t val) = 0;
     };
 
     // Class for emulated Z80's internal registers
@@ -175,10 +175,10 @@ namespace beez80
 	    uint16_t getimmWord();
 
 	    // Reads byte from I/O port
-	    uint8_t portIn(uint8_t port);
+	    uint8_t portIn(uint16_t port);
 
 	    // Writes byte to I/O port
-	    void portOut(uint8_t port, uint8_t val);
+	    void portOut(uint16_t port, uint8_t val);
 
 	    // Logic for JP instruction
 	    int jump(uint16_t word, bool cond = true);
@@ -261,6 +261,7 @@ namespace beez80
 	    // Misc instructions
 	    // TODO: Implement the rest of these operations
 	    int cpl();
+	    int retn();
 
 	    // Internal code for arithmetic operations
 	    // Note: "carry" defaults to false in this implementation
