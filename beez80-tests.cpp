@@ -184,6 +184,8 @@ class TestInterface : public BeeZ80Interface
 			    cout.put(readByte(addr));
 			}
 
+			cout << flush;
+
 			is_msb_sent = false;
 		    }
 		}

@@ -252,15 +252,22 @@ namespace beez80
 	    uint8_t inc_reg(uint8_t val);
 	    uint8_t dec_reg(uint8_t val);
 
-	    // LDI/OUTI operations
+	    // Misc extended operations
 	    int ldi();
 	    int outi();
 	    int ldir();
 	    int otir();
+	    int cpd();
+	    int cpi();
+	    int cpir();
+	    int cpdr();
 
 	    // Misc instructions
 	    // TODO: Implement the rest of these operations
 	    int cpl();
+	    int scf();
+	    int ccf();
+	    int daa();
 	    int retn();
 
 	    // Internal code for arithmetic operations
