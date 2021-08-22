@@ -326,6 +326,31 @@ void BeeZ80::writeByte(uint16_t addr, uint8_t val)
     }
 }
 
+// Reads an 8-bit value from opcode space at address of "addr"
+uint8_t BeeZ80::readOpcode(uint16_t addr)
+{
+    // Check if interface is valid (i.e. not a null pointer)
+    // before accessing it (this helps prevent a buffer overflow caused
+    // by an erroneous null pointer)
+
+    if (inter != NULL)
+    {
+	if (inter->isSeperateOps())
+	{
+	    return inter->readOpcode(addr);
+	}
+	else
+	{
+	    return inter->readByte(addr);
+	}
+    }
+    else
+    {
+	// Return 0 if interface is invalid
+	return 0x00;
+    }
+}
+
 // Reads a 16-bit value from memory at address of "addr"
 uint16_t BeeZ80::readWord(uint16_t addr)
 {
@@ -405,7 +430,7 @@ uint8_t BeeZ80::getimmByte()
 uint8_t BeeZ80::getOpcode()
 {
     // Fetch the opcode...
-    uint8_t value = getimmByte();
+    uint8_t value = readOpcode(pc++);
 
     // ...increment the refresh register, keeping the highest byte intact...
     refresh = ((refresh & 0x80) | ((refresh + 1) & 0x7F));
@@ -1337,7 +1362,7 @@ string BeeZ80::disassembleinstr(uint16_t addr)
 {
     stringstream instr;
 
-    uint8_t opcode = readByte(addr);
+    uint8_t opcode = readOpcode(addr);
 
     uint16_t pc_val = (addr + 1);
     uint8_t imm_byte = readByte(pc_val);
@@ -1613,7 +1638,7 @@ string BeeZ80::disassembleinstrindex(uint16_t addr, bool is_fd)
 
     string index_reg = (is_fd) ? "IY" : "IX";
 
-    uint8_t opcode = readByte(addr);
+    uint8_t opcode = readOpcode(addr);
 
     uint16_t pc_val = (addr + 1);
     uint8_t imm_byte = readByte(pc_val);
@@ -1689,7 +1714,7 @@ string BeeZ80::disassembleinstrbit(uint16_t addr)
 {
     stringstream instr;
 
-    uint8_t opcode = readByte(addr);
+    uint8_t opcode = readOpcode(addr);
     // Instruction decoding taken from http://z80.info/decoding.htm#cb
     int opx = ((opcode >> 6) & 0x3);
     int opy = ((opcode >> 3) & 0x7);
@@ -1803,7 +1828,7 @@ string BeeZ80::disassembleinstrextended(uint16_t addr)
 {
     stringstream instr;
 
-    uint8_t opcode = readByte(addr);
+    uint8_t opcode = readOpcode(addr);
 
     uint16_t pc_val = (addr + 1);
     uint16_t imm_word = readWord(pc_val);
@@ -1812,11 +1837,13 @@ string BeeZ80::disassembleinstrextended(uint16_t addr)
     {
 	case 0x41: instr << "OUT (C), B"; break;
 	case 0x42: instr << "SBC HL, BC"; break;
+	case 0x43: instr << "LD (" << hex << (int)imm_word << "), BC"; break;
 	case 0x45: instr << "RETN"; break;
 	case 0x46: instr << "IM 0"; break;
 	case 0x47: instr << "LD I, A"; break;
 	case 0x49: instr << "OUT (C), C"; break;
 	case 0x4A: instr << "ADC HL, BC"; break;
+	case 0x4B: instr << "LD BC, (" << hex << (int)imm_word << ")"; break;
 	case 0x51: instr << "OUT (C), D"; break;
 	case 0x52: instr << "SBC HL, DE"; break;
 	case 0x53: instr << "LD (" << hex << (int)imm_word << "), DE"; break;
@@ -1824,16 +1851,17 @@ string BeeZ80::disassembleinstrextended(uint16_t addr)
 	case 0x56: instr << "IM 1"; break;
 	case 0x59: instr << "OUT (C), E"; break;
 	case 0x5A: instr << "ADC HL, DE"; break;
-	case 0x5B: instr << "LD DE, " << hex << (int)imm_word; break;
+	case 0x5B: instr << "LD DE, (" << hex << (int)imm_word << ")"; break;
 	case 0x5D: instr << "RETN"; break;
 	case 0x5E: instr << "IM 2"; break;
 	case 0x61: instr << "OUT (C), H"; break;
 	case 0x62: instr << "SBC HL, HL"; break;
+	case 0x63: instr << "LD (" << hex << (int)imm_word << "), HL"; break;
 	case 0x65: instr << "RETN"; break;
 	case 0x66: instr << "IM 0"; break;
 	case 0x69: instr << "OUT (C), L"; break;
 	case 0x6A: instr << "ADC HL, HL"; break;
-	case 0x6B: instr << "LD HL, " << hex << (int)imm_word; break;
+	case 0x6B: instr << "LD HL, (" << hex << (int)imm_word << ")"; break;
 	case 0x6D: instr << "RETN"; break;
 	case 0x71: instr << "OUT (C), 0"; break;
 	case 0x72: instr << "SBC HL, SP"; break;
@@ -2499,6 +2527,14 @@ int BeeZ80::executenextextendedopcode(uint8_t opcode)
 	case 0x47: interrupt = af.gethi(); cycle_count = 9; break; // LD I, A
 	case 0x49: portOut(bc.getreg(), bc.getlo()); cycle_count = 12; break; // OUT (C), C
 	case 0x4A: arith_adc16(bc.getreg()); cycle_count = 15; break; // ADC HL, BC
+	case 0x4B:
+	{
+	    uint16_t addr = getimmWord();
+	    bc.setreg(readWord(addr));
+	    mem_ptr = (addr + 1);
+	    cycle_count = 20;
+	}
+	break; // LD BC, (imm16)
 	case 0x51: portOut(bc.getreg(), de.gethi()); cycle_count = 12; break; // OUT (C), D
 	case 0x52: arith_sbc16(de.getreg()); cycle_count = 15; break; // SBC HL, DE
 	case 0x53:

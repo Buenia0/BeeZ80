@@ -36,13 +36,40 @@ namespace beez80
 	    ~BeeZ80Interface();
 
 	    // Reads a byte from memory
-	    virtual uint8_t readByte(uint16_t addr) = 0;
+	    virtual uint8_t readByte(uint16_t addr)
+	    {
+		return 0xFF;
+	    }
+
 	    // Writes a byte to memory
-	    virtual void writeByte(uint16_t addr, uint8_t val) = 0;
+	    virtual void writeByte(uint16_t addr, uint8_t val)
+	    {
+		return;
+	    }
+
+	    // Determines if program and opcode space are seperate
+	    virtual bool isSeperateOps()
+	    {
+		return false;
+	    }
+
+	    // Reads an opcode from memory (if opcode space is available)
+	    virtual uint8_t readOpcode(uint16_t addr)
+	    {
+		return 0xFF;
+	    }
+
 	    // Reads a byte from an I/O port
-	    virtual uint8_t portIn(uint16_t port) = 0;
+	    virtual uint8_t portIn(uint16_t port)
+	    {
+		return 0xFF;
+	    }
+
 	    // Writes a byte to an I/O port
-	    virtual void portOut(uint16_t port, uint8_t val) = 0;
+	    virtual void portOut(uint16_t port, uint8_t val)
+	    {
+		return;
+	    }
     };
 
     // Class for emulated Z80's internal registers
@@ -159,6 +186,8 @@ namespace beez80
 	    uint8_t readByte(uint16_t addr);
 	    // Writes byte to memory
 	    void writeByte(uint16_t addr, uint8_t val);
+	    // Reads an opcode from memory
+	    uint8_t readOpcode(uint16_t addr);
 
 	    // Reads 16-bit word from memory
 	    uint16_t readWord(uint16_t addr);
