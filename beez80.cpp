@@ -2411,11 +2411,13 @@ int BeeZ80::executenextindexopcode(uint8_t opcode, bool is_fd)
 	case 0x09: arith_addindex(indexreg, bc.getreg()); cycle_count = 15; break; // ADD IX/IY, BC
 	case 0x19: arith_addindex(indexreg, de.getreg()); cycle_count = 15; break; // ADD IX/IY, DE
 	case 0x21: indexreg.setreg(getimmWord()); cycle_count = 14; break; // LD IX/IY, imm16
+	case 0x22: writeWord(getimmWord(), indexreg.getreg()); cycle_count = 20; break; // LD (imm16), IX/IY
 	case 0x23: indexreg.setreg(indexreg.getreg() + 1); cycle_count = 10; break; // INC IX/IY
 	case 0x24: indexreg.sethi(inc_reg(indexreg.gethi())); cycle_count = 8; break; // INC IXH/IYH
 	case 0x25: indexreg.sethi(dec_reg(indexreg.gethi())); cycle_count = 8; break; // DEC IXH/IYH
 	case 0x26: indexreg.sethi(getimmByte()); cycle_count = 11; break; // LD IXH/IYH, imm8
 	case 0x29: arith_addindex(indexreg, indexreg.getreg()); cycle_count = 15; break; // ADD IX, IX
+	case 0x2A: indexreg.setreg(readWord(getimmWord())); cycle_count = 20; break; // LD IX/IY, (imm16)
 	case 0x2B: indexreg.setreg(indexreg.getreg() - 1); cycle_count = 10; break; // DEC IX/IY
 	case 0x2C: indexreg.setlo(inc_reg(indexreg.getlo())); cycle_count = 8; break; // INC IXL/IYL
 	case 0x2D: indexreg.setlo(dec_reg(indexreg.getlo())); cycle_count = 8; break; // DEC IXL/IYL
@@ -2434,7 +2436,13 @@ int BeeZ80::executenextindexopcode(uint8_t opcode, bool is_fd)
 	    cycle_count = 23;
 	}
 	break;
-	case 0x36: writeByte(displacement(indexreg.getreg()), getimmByte()); cycle_count = 19; break; // LD, (IX/IY + imm8), imm8
+	case 0x36:
+	{
+	    uint16_t displace_val = displacement(indexreg.getreg());
+	    writeByte(displace_val, getimmByte());
+	    cycle_count = 19;
+	}
+	break; // LD, (IX/IY + imm8), imm8
 	case 0x39: arith_addindex(indexreg, sp); cycle_count = 15; break; // ADD IX, IX
 	case 0x46: bc.sethi(readByte(displacement(indexreg.getreg()))); cycle_count = 19; break; // LD B, (IX/IY + imm8)
 	case 0x4E: bc.setlo(readByte(displacement(indexreg.getreg()))); cycle_count = 19; break; // LD C, (IX/IY + imm8)

@@ -38,12 +38,16 @@ namespace beez80
 	    // Reads a byte from memory
 	    virtual uint8_t readByte(uint16_t addr)
 	    {
+		cout << "Reading value from address of " << hex << (int)addr << endl;
+		exit(0);
 		return 0xFF;
 	    }
 
 	    // Writes a byte to memory
 	    virtual void writeByte(uint16_t addr, uint8_t val)
 	    {
+		cout << "Writing value of " << hex << (int)val << " to address of " << hex << (int)addr << endl;
+		exit(0);
 		return;
 	    }
 
@@ -56,19 +60,24 @@ namespace beez80
 	    // Reads an opcode from memory (if opcode space is available)
 	    virtual uint8_t readOpcode(uint16_t addr)
 	    {
+		cout << "Reading opcode from address of " << hex << (int)addr << endl;
+		exit(0);
 		return 0xFF;
 	    }
 
 	    // Reads a byte from an I/O port
 	    virtual uint8_t portIn(uint16_t port)
 	    {
+		cout << "Reading value from port of " << hex << (int)(port & 0xFF) << endl;
+		exit(0);
 		return 0xFF;
 	    }
 
 	    // Writes a byte to an I/O port
 	    virtual void portOut(uint16_t port, uint8_t val)
 	    {
-		return;
+		cout << "Writing value of " << hex << (int)val << " to port of " << hex << (int)(port & 0xFF) << endl;
+		exit(0);
 	    }
     };
 
