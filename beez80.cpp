@@ -1080,6 +1080,15 @@ int BeeZ80::ldi()
     return 16;
 }
 
+int BeeZ80::ldd()
+{
+    ldi();
+    // LDD is the same as LDI, but HL and DE are decremented instead of incremented
+    hl.setreg((hl.getreg() - 2));
+    de.setreg((de.getreg() - 2));
+    return 16;
+}
+
 int BeeZ80::outi()
 {
     portOut(bc.getreg(), readByte(hl.getreg()));
@@ -1094,6 +1103,20 @@ int BeeZ80::outi()
 int BeeZ80::ldir()
 {
     ldi();
+
+    if (bc.getreg() != 0)
+    {
+	pc -= 2;
+	mem_ptr = (pc + 1);
+	return 21;
+    }
+
+    return 16;
+}
+
+int BeeZ80::lddr()
+{
+    ldd();
 
     if (bc.getreg() != 0)
     {
@@ -1174,6 +1197,59 @@ int BeeZ80::cpdr()
 	mem_ptr += 1;
 	return 16;
     }
+}
+
+int BeeZ80::rrd()
+{
+    uint8_t reg_a = af.gethi();
+    uint8_t val = readByte(hl.getreg());
+    uint8_t af_res = ((reg_a & 0xF0) | (val & 0xF));
+    uint8_t hl_res = ((val >> 4) | (reg_a << 4));
+
+    setzs(af_res);
+    setxy(af_res);
+    setsubtract(false);
+    sethalf(false);
+    setpariflow(parity(af_res));
+    mem_ptr = (hl.getreg() + 1);
+    af.sethi(af_res);
+    writeByte(hl.getreg(), hl_res);
+    return 18;
+}
+
+int BeeZ80::rld()
+{
+    uint8_t reg_a = af.gethi();
+    uint8_t val = readByte(hl.getreg());
+    uint8_t af_res = ((reg_a & 0xF0) | (val >> 4));
+    uint8_t hl_res = ((val << 4) | (reg_a & 0xF));
+
+    setzs(af_res);
+    setxy(af_res);
+    setsubtract(false);
+    sethalf(false);
+    setpariflow(parity(af_res));
+    mem_ptr = (hl.getreg() + 1);
+    af.sethi(af_res);
+    writeByte(hl.getreg(), hl_res);
+    return 18;
+}
+
+int BeeZ80::neg()
+{
+    uint8_t result = sub_internal(0, af.gethi());
+    af.sethi(result);
+    return 8;
+}
+
+uint8_t BeeZ80::portInC()
+{
+    uint8_t result = portIn(bc.getlo());
+    setzs(result);
+    setpariflow(parity(result));
+    setsubtract(false);
+    sethalf(false);
+    return result;
 }
 
 int BeeZ80::cpl()
@@ -2401,7 +2477,6 @@ int BeeZ80::executenextindexbitopcode(uint8_t opcode, uint16_t addr, bool is_fd)
 // Emulates the Zilog Z80's DD/FD-prefix instruction (IX/IY instructions)
 int BeeZ80::executenextindexopcode(uint8_t opcode, bool is_fd)
 {
-    uint8_t prefix = (is_fd) ? 0xFD : 0xDD;
     auto &indexreg = (is_fd) ? iy : ix;
 
     int cycle_count = 0;
@@ -2444,12 +2519,34 @@ int BeeZ80::executenextindexopcode(uint8_t opcode, bool is_fd)
 	}
 	break; // LD, (IX/IY + imm8), imm8
 	case 0x39: arith_addindex(indexreg, sp); cycle_count = 15; break; // ADD IX, IX
+	case 0x44: bc.sethi(indexreg.gethi()); cycle_count = 8; break; // LD B, IXH/IYH
+	case 0x45: bc.sethi(indexreg.getlo()); cycle_count = 8; break; // LD B, IXL/IYL
 	case 0x46: bc.sethi(readByte(displacement(indexreg.getreg()))); cycle_count = 19; break; // LD B, (IX/IY + imm8)
+	case 0x4C: bc.setlo(indexreg.gethi()); cycle_count = 8; break; // LD C, IXH/IYH
+	case 0x4D: bc.setlo(indexreg.getlo()); cycle_count = 8; break; // LD C, IXL/IYL
 	case 0x4E: bc.setlo(readByte(displacement(indexreg.getreg()))); cycle_count = 19; break; // LD C, (IX/IY + imm8)
+	case 0x54: de.sethi(indexreg.gethi()); cycle_count = 8; break; // LD D, IXH/IYH
+	case 0x55: de.sethi(indexreg.getlo()); cycle_count = 8; break; // LD D, IXL/IYL
 	case 0x56: de.sethi(readByte(displacement(indexreg.getreg()))); cycle_count = 19; break; // LD D, (IX/IY + imm8)
+	case 0x5C: de.setlo(indexreg.gethi()); cycle_count = 8; break; // LD E, IXH/IYH
+	case 0x5D: de.setlo(indexreg.getlo()); cycle_count = 8; break; // LD E, IXL/IYL
 	case 0x5E: de.setlo(readByte(displacement(indexreg.getreg()))); cycle_count = 19; break; // LD E, (IX/IY + imm8)
+	case 0x60: indexreg.sethi(bc.gethi()); cycle_count = 8; break; // LD IXH/IYH, B
+	case 0x61: indexreg.sethi(bc.getlo()); cycle_count = 8; break; // LD IXH/IYH, C
+	case 0x62: indexreg.sethi(de.gethi()); cycle_count = 8; break; // LD IXH/IYH, D
+	case 0x63: indexreg.sethi(de.getlo()); cycle_count = 8; break; // LD IXH/IYH, E
+	case 0x64: indexreg.sethi(indexreg.gethi()); cycle_count = 8; break; // LD IXH/IYH, IXH/IYH
+	case 0x65: indexreg.sethi(indexreg.getlo()); cycle_count = 8; break; // LD IXH/IYH, IXL/IYL
 	case 0x66: hl.sethi(readByte(displacement(indexreg.getreg()))); cycle_count = 19; break; // LD H, (IX/IY + imm8)
+	case 0x67: indexreg.sethi(af.gethi()); cycle_count = 8; break; // LD IXH/IYH, A
+	case 0x68: indexreg.setlo(bc.gethi()); cycle_count = 8; break; // LD IXL/IYL, B
+	case 0x69: indexreg.setlo(bc.getlo()); cycle_count = 8; break; // LD IXL/IYL, C
+	case 0x6A: indexreg.setlo(de.gethi()); cycle_count = 8; break; // LD IXL/IYL, D
+	case 0x6B: indexreg.setlo(de.getlo()); cycle_count = 8; break; // LD IXL/IYL, E
+	case 0x6C: indexreg.setlo(indexreg.gethi()); cycle_count = 8; break; // LD IXL/IYL, IXH/IYH
+	case 0x6D: indexreg.setlo(indexreg.getlo()); cycle_count = 8; break; // LD IXL/IYL, IXL/IYL
 	case 0x6E: hl.setlo(readByte(displacement(indexreg.getreg()))); cycle_count = 19; break; // LD L, (IX/IY + imm8)
+	case 0x6F: indexreg.setlo(af.gethi()); cycle_count = 8; break; // LD IXL/IYL, A
 	case 0x70: writeByte(displacement(indexreg.getreg()), bc.gethi()); cycle_count = 19; break; // LD (IX/IY + imm8), B
 	case 0x71: writeByte(displacement(indexreg.getreg()), bc.getlo()); cycle_count = 19; break; // LD (IX/IY + imm8), C
 	case 0x72: writeByte(displacement(indexreg.getreg()), de.gethi()); cycle_count = 19; break; // LD (IX/IY + imm8), D
@@ -2457,6 +2554,8 @@ int BeeZ80::executenextindexopcode(uint8_t opcode, bool is_fd)
 	case 0x74: writeByte(displacement(indexreg.getreg()), hl.gethi()); cycle_count = 19; break; // LD (IX/IY + imm8), H
 	case 0x75: writeByte(displacement(indexreg.getreg()), hl.getlo()); cycle_count = 19; break; // LD (IX/IY + imm8), L
 	case 0x77: writeByte(displacement(indexreg.getreg()), af.gethi()); cycle_count = 19; break; // LD (IX/IY + imm8), A
+	case 0x7C: af.sethi(indexreg.gethi()); cycle_count = 8; break; // LD A, IXH/IYH
+	case 0x7D: af.sethi(indexreg.getlo()); cycle_count = 8; break; // LD A, IXL/IYL
 	case 0x7E: af.sethi(readByte(displacement(indexreg.getreg()))); cycle_count = 19; break; // LD A, (IX/IY + imm8)
 	case 0x84: arith_add(indexreg.gethi()); cycle_count = 8; break; // ADD A, IXH/IYH
 	case 0x85: arith_add(indexreg.getlo()); cycle_count = 8; break; // ADD A, IXL/IYL
@@ -2501,7 +2600,9 @@ int BeeZ80::executenextindexopcode(uint8_t opcode, bool is_fd)
 	break; // EX (SP), IX/IY
 	case 0xE5: push_stack(indexreg.getreg()); cycle_count = 15; break; // PUSH IX/IY
 	case 0xE9: pc = indexreg.getreg(); cycle_count = 8; break; // JP IX/IY
-	default: unrecognizedprefixopcode(prefix, opcode); break;
+	case 0xF9: sp = indexreg.getreg(); cycle_count = 10; break; // LD SP, IX/IY
+	// Any other DD/FD opcode behaves as a non-prefixed opcode
+	default: cycle_count = executenextopcode(opcode); break;
     }
 
     return cycle_count;
@@ -2513,6 +2614,7 @@ int BeeZ80::executenextextendedopcode(uint8_t opcode)
 
     switch (opcode)
     {
+	case 0x40: bc.sethi(portInC()); cycle_count = 12; break; // IN B, (C)
 	case 0x41: portOut(bc.getreg(), bc.gethi()); cycle_count = 12; break; // OUT (C), B
 	case 0x42: arith_sbc16(bc.getreg()); cycle_count = 15; break; // SBC HL, BC
 	case 0x43:
@@ -2523,16 +2625,11 @@ int BeeZ80::executenextextendedopcode(uint8_t opcode)
 	    cycle_count = 20;
 	}
 	break; // LD (imm16), BC
-	case 0x44: 
-	{
-	    uint8_t result = sub_internal(0, af.gethi());
-	    af.sethi(result);
-	    cycle_count = 8;
-	}
-	break; // NEG
+	case 0x44: cycle_count = neg(); break; // NEG
 	case 0x45: cycle_count = retn(); break; // RETN
 	case 0x46: interrupt_mode = 0; cycle_count = 8; break; // IM 0
 	case 0x47: interrupt = af.gethi(); cycle_count = 9; break; // LD I, A
+	case 0x48: bc.setlo(portInC()); cycle_count = 12; break; // IN C, (C)
 	case 0x49: portOut(bc.getreg(), bc.getlo()); cycle_count = 12; break; // OUT (C), C
 	case 0x4A: arith_adc16(bc.getreg()); cycle_count = 15; break; // ADC HL, BC
 	case 0x4B:
@@ -2543,6 +2640,9 @@ int BeeZ80::executenextextendedopcode(uint8_t opcode)
 	    cycle_count = 20;
 	}
 	break; // LD BC, (imm16)
+	case 0x4C: cycle_count = neg(); break; // NEG
+	case 0x4D: ret(); cycle_count = 14; break; // RETI
+	case 0x50: de.sethi(portInC()); cycle_count = 12; break; // IN D, (C)
 	case 0x51: portOut(bc.getreg(), de.gethi()); cycle_count = 12; break; // OUT (C), D
 	case 0x52: arith_sbc16(de.getreg()); cycle_count = 15; break; // SBC HL, DE
 	case 0x53:
@@ -2553,8 +2653,10 @@ int BeeZ80::executenextextendedopcode(uint8_t opcode)
 	    cycle_count = 20;
 	}
 	break; // LD (imm16), DE
+	case 0x54: cycle_count = neg(); break; // NEG
 	case 0x55: cycle_count = retn(); break; // RETN
 	case 0x56: interrupt_mode = 1; cycle_count = 8; break; // IM 1
+	case 0x58: de.setlo(portInC()); cycle_count = 12; break; // IN E, (C)
 	case 0x59: portOut(bc.getreg(), de.getlo()); cycle_count = 12; break; // OUT (C), E
 	case 0x5A: arith_adc16(de.getreg()); cycle_count = 15; break; // ADC HL, DE
 	case 0x5B:
@@ -2565,8 +2667,10 @@ int BeeZ80::executenextextendedopcode(uint8_t opcode)
 	    cycle_count = 20;
 	}
 	break; // LD DE, (imm16)
+	case 0x5C: cycle_count = neg(); break; // NEG
 	case 0x5D: cycle_count = retn(); break; // RETN
 	case 0x5E: interrupt_mode = 2; cycle_count = 8; break; // IM 2
+	case 0x60: hl.sethi(portInC()); cycle_count = 12; break; // IN H, (C)
 	case 0x61: portOut(bc.getreg(), hl.gethi()); cycle_count = 12; break; // OUT (C), H
 	case 0x62: arith_sbc16(hl.getreg()); cycle_count = 15; break; // SBC HL, HL
 	case 0x63:
@@ -2577,8 +2681,11 @@ int BeeZ80::executenextextendedopcode(uint8_t opcode)
 	    cycle_count = 20;
 	}
 	break; // LD (imm16), HL
+	case 0x64: cycle_count = neg(); break; // NEG
 	case 0x65: cycle_count = retn(); break; // RETN
 	case 0x66: interrupt_mode = 0; cycle_count = 8; break; // IM 0
+	case 0x67: cycle_count = rrd(); break; // RRD
+	case 0x68: hl.setlo(portInC()); cycle_count = 12; break; // IN L, (C)
 	case 0x69: portOut(bc.getreg(), hl.getlo()); cycle_count = 12; break; // OUT (C), L
 	case 0x6A: arith_adc16(hl.getreg()); cycle_count = 15; break; // ADC HL, HL
 	case 0x6B:
@@ -2589,7 +2696,10 @@ int BeeZ80::executenextextendedopcode(uint8_t opcode)
 	    cycle_count = 20;
 	}
 	break; // LD HL, (imm16)
+	case 0x6C: cycle_count = neg(); break; // NEG
 	case 0x6D: cycle_count = retn(); break; // RETN
+	case 0x6F: cycle_count = rld(); break; // RLD
+	case 0x70: portInC(); cycle_count = 12; break; // IN (C)
 	case 0x71: portOut(bc.getreg(), 0); cycle_count = 12; break; // OUT (C), 0
 	case 0x72: arith_sbc16(sp); cycle_count = 15; break; // SBC HL, SP
 	case 0x73:
@@ -2600,8 +2710,16 @@ int BeeZ80::executenextextendedopcode(uint8_t opcode)
 	    cycle_count = 20;
 	}
 	break; // LD (imm16), SP
+	case 0x74: cycle_count = neg(); break; // NEG
 	case 0x75: cycle_count = retn(); break; // RETN
 	case 0x76: interrupt_mode = 1; cycle_count = 8; break; // IM 1
+	case 0x78:
+	{
+	    af.sethi(portInC());
+	    mem_ptr = (bc.getreg() + 1);
+	    cycle_count = 12;
+	}
+	break; // IN A, (C)
 	case 0x79:
 	{
 	    portOut(bc.getreg(), af.gethi());
@@ -2618,15 +2736,18 @@ int BeeZ80::executenextextendedopcode(uint8_t opcode)
 	    cycle_count = 20;
 	}
 	break; // LD SP, (imm16)
+	case 0x7C: cycle_count = neg(); break; // NEG
 	case 0x7D: cycle_count = retn(); break; // RETN
 	case 0x7E: interrupt_mode = 2; cycle_count = 8; break; // IM 2
 	case 0xA0: cycle_count = ldi(); break; // LDI
 	case 0xA1: cycle_count = cpi(); break; // CPI
 	case 0xA3: cycle_count = outi(); break; // OUTI
+	case 0xA8: cycle_count = ldd(); break; // LDD
 	case 0xA9: cycle_count = cpd(); break; // CPD
 	case 0xB0: cycle_count = ldir(); break; // LDIR
 	case 0xB1: cycle_count = cpir(); break; // CPIR
 	case 0xB3: cycle_count = otir(); break; // OTIR
+	case 0xB8: cycle_count = lddr(); break; // LDDR
 	case 0xB9: cycle_count = cpdr(); break; // CPDR
 	default: unrecognizedprefixopcode(0xED, opcode); break;
     }

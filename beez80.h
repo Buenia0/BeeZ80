@@ -292,13 +292,19 @@ namespace beez80
 
 	    // Misc extended operations
 	    int ldi();
+	    int ldd();
 	    int outi();
 	    int ldir();
+	    int lddr();
 	    int otir();
 	    int cpd();
 	    int cpi();
 	    int cpir();
 	    int cpdr();
+	    int rrd();
+	    int rld();
+	    int neg();
+	    uint8_t portInC();
 
 	    // Misc instructions
 	    // TODO: Implement the rest of these operations
