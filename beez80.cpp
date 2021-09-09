@@ -1726,22 +1726,38 @@ string BeeZ80::disassembleinstrindex(uint16_t addr, bool is_fd)
 	case 0x09: instr << "ADD " << index_reg << ", BC"; break;
 	case 0x19: instr << "ADD " << index_reg << ", DE"; break;
 	case 0x21: instr << "LD " << index_reg << ", " << hex << (int)imm_word; break;
+	case 0x22: instr << "LD (" << hex << (int)imm_word << "), " << index_reg; break;
 	case 0x23: instr << "INC " << index_reg; break;
 	case 0x24: instr << "INC " << index_reg << "H"; break;
 	case 0x25: instr << "DEC " << index_reg << "H"; break;
 	case 0x26: instr << "LD " << index_reg << "H, " << hex << (int)imm_byte; break;
 	case 0x29: instr << "ADD " << index_reg << ", " << index_reg; break;
+	case 0x2A: instr << "LD " << index_reg << ", (" << hex << (int)imm_word << ")"; break;
 	case 0x2B: instr << "DEC " << index_reg; break;
 	case 0x2C: instr << "INC " << index_reg << "L"; break;
 	case 0x2D: instr << "DEC " << index_reg << "L"; break;
 	case 0x2E: instr << "LD " << index_reg << "L, " << hex << (int)imm_byte; break;
+	case 0x34: instr << "INC (" << index_reg << " + " << hex << (int)imm_byte << ")"; break;
+	case 0x35: instr << "DEC (" << index_reg << " + " << hex << (int)imm_byte << ")"; break;
 	case 0x36: instr << "LD (" << index_reg << " + " << hex << (int)imm_byte << "), " << hex << (int)extra_byte; break; 
 	case 0x39: instr << "ADD " << index_reg << ", SP"; break;
+	case 0x44: instr << "LD B, " << index_reg << "H"; break;
+	case 0x45: instr << "LD B, " << index_reg << "L"; break;
 	case 0x46: instr << "LD B, (" << index_reg << " + " << hex << (int)imm_byte << ")"; break;
+	case 0x4C: instr << "LD C, " << index_reg << "H"; break;
+	case 0x4D: instr << "LD C, " << index_reg << "L"; break;
 	case 0x4E: instr << "LD C, (" << index_reg << " + " << hex << (int)imm_byte << ")"; break;
+	case 0x54: instr << "LD D, " << index_reg << "H"; break;
+	case 0x55: instr << "LD D, " << index_reg << "L"; break;
 	case 0x56: instr << "LD D, (" << index_reg << " + " << hex << (int)imm_byte << ")"; break;
+	case 0x5C: instr << "LD E, " << index_reg << "H"; break;
+	case 0x5D: instr << "LD E, " << index_reg << "L"; break;
 	case 0x5E: instr << "LD E, (" << index_reg << " + " << hex << (int)imm_byte << ")"; break;
+	case 0x64: instr << "LD " << index_reg << "H, " << index_reg << "H"; break;
+	case 0x65: instr << "LD " << index_reg << "H, " << index_reg << "L"; break;
 	case 0x66: instr << "LD H, (" << index_reg << " + " << hex << (int)imm_byte << ")"; break;
+	case 0x6C: instr << "LD " << index_reg << "L, " << index_reg << "H"; break;
+	case 0x6D: instr << "LD " << index_reg << "L, " << index_reg << "L"; break;
 	case 0x6E: instr << "LD L, (" << index_reg << " + " << hex << (int)imm_byte << ")"; break;
 	case 0x70: instr << "LD (" << index_reg << " + " << hex << (int)imm_byte << "), B"; break;
 	case 0x71: instr << "LD (" << index_reg << " + " << hex << (int)imm_byte << "), C"; break;
@@ -1750,6 +1766,8 @@ string BeeZ80::disassembleinstrindex(uint16_t addr, bool is_fd)
 	case 0x74: instr << "LD (" << index_reg << " + " << hex << (int)imm_byte << "), H"; break;
 	case 0x75: instr << "LD (" << index_reg << " + " << hex << (int)imm_byte << "), L"; break;
 	case 0x77: instr << "LD (" << index_reg << " + " << hex << (int)imm_byte << "), A"; break;
+	case 0x7C: instr << "LD A, " << index_reg << "H"; break;
+	case 0x7D: instr << "LD A, " << index_reg << "L"; break;
 	case 0x7E: instr << "LD A, (" << index_reg << " + " << hex << (int)imm_byte << ")"; break;
 	case 0x84: instr << "ADD A, " << index_reg << "H"; break;
 	case 0x85: instr << "ADD A, " << index_reg << "L"; break;
@@ -1780,6 +1798,7 @@ string BeeZ80::disassembleinstrindex(uint16_t addr, bool is_fd)
 	case 0xE3: instr << "EX (SP), " << index_reg; break;
 	case 0xE5: instr << "PUSH " << index_reg; break;
 	case 0xE9: instr << "JP " << index_reg; break;
+	case 0xF9: instr << "LD SP, " << index_reg; break;
 	default: instr << "unknown " << index_reg << ", " << hex << (int)opcode; break;
     }
 
@@ -1911,34 +1930,48 @@ string BeeZ80::disassembleinstrextended(uint16_t addr)
 
     switch (opcode)
     {
+	case 0x40: instr << "IN B, (C)"; break;
 	case 0x41: instr << "OUT (C), B"; break;
 	case 0x42: instr << "SBC HL, BC"; break;
 	case 0x43: instr << "LD (" << hex << (int)imm_word << "), BC"; break;
+	case 0x44: instr << "NEG"; break;
 	case 0x45: instr << "RETN"; break;
 	case 0x46: instr << "IM 0"; break;
 	case 0x47: instr << "LD I, A"; break;
+	case 0x48: instr << "IN C, (C)"; break;
 	case 0x49: instr << "OUT (C), C"; break;
 	case 0x4A: instr << "ADC HL, BC"; break;
 	case 0x4B: instr << "LD BC, (" << hex << (int)imm_word << ")"; break;
+	case 0x4C: instr << "NEG"; break;
+	case 0x4D: instr << "RETI"; break;
+	case 0x50: instr << "IN D, (C)"; break;
 	case 0x51: instr << "OUT (C), D"; break;
 	case 0x52: instr << "SBC HL, DE"; break;
 	case 0x53: instr << "LD (" << hex << (int)imm_word << "), DE"; break;
+	case 0x54: instr << "NEG"; break;
 	case 0x55: instr << "RETN"; break;
 	case 0x56: instr << "IM 1"; break;
+	case 0x58: instr << "IN E, (C)"; break;
 	case 0x59: instr << "OUT (C), E"; break;
 	case 0x5A: instr << "ADC HL, DE"; break;
 	case 0x5B: instr << "LD DE, (" << hex << (int)imm_word << ")"; break;
+	case 0x5C: instr << "NEG"; break;
 	case 0x5D: instr << "RETN"; break;
 	case 0x5E: instr << "IM 2"; break;
+	case 0x60: instr << "IN H, (C)"; break;
 	case 0x61: instr << "OUT (C), H"; break;
 	case 0x62: instr << "SBC HL, HL"; break;
 	case 0x63: instr << "LD (" << hex << (int)imm_word << "), HL"; break;
+	case 0x64: instr << "NEG"; break;
 	case 0x65: instr << "RETN"; break;
 	case 0x66: instr << "IM 0"; break;
+	case 0x67: instr << "RRD"; break;
 	case 0x69: instr << "OUT (C), L"; break;
 	case 0x6A: instr << "ADC HL, HL"; break;
 	case 0x6B: instr << "LD HL, (" << hex << (int)imm_word << ")"; break;
+	case 0x6C: instr << "NEG"; break;
 	case 0x6D: instr << "RETN"; break;
+	case 0x6F: instr << "RLD"; break;
 	case 0x71: instr << "OUT (C), 0"; break;
 	case 0x72: instr << "SBC HL, SP"; break;
 	case 0x73: instr << "LD (" << hex << (int)imm_word << "), SP"; break;
@@ -2642,6 +2675,7 @@ int BeeZ80::executenextextendedopcode(uint8_t opcode)
 	break; // LD BC, (imm16)
 	case 0x4C: cycle_count = neg(); break; // NEG
 	case 0x4D: ret(); cycle_count = 14; break; // RETI
+	case 0x4F: refresh = af.gethi(); cycle_count = 9; break; // LD R, A
 	case 0x50: de.sethi(portInC()); cycle_count = 12; break; // IN D, (C)
 	case 0x51: portOut(bc.getreg(), de.gethi()); cycle_count = 12; break; // OUT (C), D
 	case 0x52: arith_sbc16(de.getreg()); cycle_count = 15; break; // SBC HL, DE
@@ -2656,6 +2690,17 @@ int BeeZ80::executenextextendedopcode(uint8_t opcode)
 	case 0x54: cycle_count = neg(); break; // NEG
 	case 0x55: cycle_count = retn(); break; // RETN
 	case 0x56: interrupt_mode = 1; cycle_count = 8; break; // IM 1
+	case 0x57:
+	{
+	    uint8_t res = interrupt;
+	    setzs(res);
+	    sethalf(false);
+	    setsubtract(false);
+	    setpariflow(interrupt_two);
+	    af.sethi(res);
+	    cycle_count = 9; break;
+	}
+	break; // LD A, I
 	case 0x58: de.setlo(portInC()); cycle_count = 12; break; // IN E, (C)
 	case 0x59: portOut(bc.getreg(), de.getlo()); cycle_count = 12; break; // OUT (C), E
 	case 0x5A: arith_adc16(de.getreg()); cycle_count = 15; break; // ADC HL, DE
@@ -2670,6 +2715,17 @@ int BeeZ80::executenextextendedopcode(uint8_t opcode)
 	case 0x5C: cycle_count = neg(); break; // NEG
 	case 0x5D: cycle_count = retn(); break; // RETN
 	case 0x5E: interrupt_mode = 2; cycle_count = 8; break; // IM 2
+	case 0x5F:
+	{
+	    uint8_t res = refresh;
+	    setzs(res);
+	    sethalf(false);
+	    setsubtract(false);
+	    setpariflow(interrupt_two);
+	    af.sethi(res);
+	    cycle_count = 9; break;
+	}
+	break; // LD A, R
 	case 0x60: hl.sethi(portInC()); cycle_count = 12; break; // IN H, (C)
 	case 0x61: portOut(bc.getreg(), hl.gethi()); cycle_count = 12; break; // OUT (C), H
 	case 0x62: arith_sbc16(hl.getreg()); cycle_count = 15; break; // SBC HL, HL
