@@ -1094,7 +1094,7 @@ int BeeZ80::outi()
     portOut(bc.getreg(), readByte(hl.getreg()));
     hl.setreg((hl.getreg() + 1));
     bc.sethi((bc.gethi() - 1));
-    setzero((bc.gethi() == 0));
+    setzs(bc.gethi());
     setsubtract(true);
     mem_ptr = (bc.getreg() + 1);
     return 16;
@@ -1227,7 +1227,7 @@ int BeeZ80::ini()
     writeByte(hl.getreg(), val);
     hl.setreg(hl.getreg() + 1);
     bc.sethi(bc.gethi() - 1);
-    setzs(bc.getreg());
+    setzs(bc.gethi());
     setsubtract(true);
     return 16;
 }
