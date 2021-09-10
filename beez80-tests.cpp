@@ -244,7 +244,7 @@ int main(int argc, char *argv[])
     BeeZ80 core;
     run_test(core, "tests/TEST.COM", 300LU); // barebones demo program to test system functionality
     run_test(core, "tests/PRELIM.COM", 8873LU); // ZEXALL Preliminary Exerciser
-    run_test(core, "tests/ZEXDOC.COM", 46719941976LU); // ZEXDOC Exerciser
-    run_test(core, "tests/ZEXALL.COM", 46719941976LU); // ZEXALL Exerciser
+    run_test(core, "tests/ZEXDOC.COM", 46719952976LU); // ZEXDOC Exerciser
+    run_test(core, "tests/ZEXALL.COM", 46719952976LU); // ZEXALL Exerciser
     return 0;
 }

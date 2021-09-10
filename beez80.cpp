@@ -1100,6 +1100,14 @@ int BeeZ80::outi()
     return 16;
 }
 
+int BeeZ80::outd()
+{
+    outi();
+    hl.setreg((hl.getreg() - 2));
+    mem_ptr = (bc.getreg() - 2);
+    return 16;
+}
+
 int BeeZ80::ldir()
 {
     ldi();
@@ -1131,6 +1139,19 @@ int BeeZ80::lddr()
 int BeeZ80::otir()
 {
     outi();
+
+    if (bc.gethi() > 0)
+    {
+	pc -= 2;
+	return 21;
+    }
+
+    return 16;
+}
+
+int BeeZ80::otdr()
+{
+    outd();
 
     if (bc.gethi() > 0)
     {
@@ -1199,6 +1220,52 @@ int BeeZ80::cpdr()
     }
 }
 
+int BeeZ80::ini()
+{
+    uint8_t val = portIn(bc.getreg());
+    mem_ptr = (bc.getreg() + 1);
+    writeByte(hl.getreg(), val);
+    hl.setreg(hl.getreg() + 1);
+    bc.sethi(bc.gethi() - 1);
+    setzs(bc.getreg());
+    setsubtract(true);
+    return 16;
+}
+
+int BeeZ80::ind()
+{
+    ini();
+    hl.setreg(hl.getreg() - 2);
+    mem_ptr = (bc.getreg() - 2);
+    return 16;
+}
+
+int BeeZ80::inir()
+{
+    ini();
+
+    if (bc.gethi() > 0)
+    {
+	pc -= 2;
+	return 21;
+    }
+
+    return 16;
+}
+
+int BeeZ80::indr()
+{
+    ind();
+
+    if (bc.gethi() > 0)
+    {
+	pc -= 2;
+	return 21;
+    }
+
+    return 16;
+}
+
 int BeeZ80::rrd()
 {
     uint8_t reg_a = af.gethi();
@@ -1244,7 +1311,7 @@ int BeeZ80::neg()
 
 uint8_t BeeZ80::portInC()
 {
-    uint8_t result = portIn(bc.getlo());
+    uint8_t result = portIn(bc.getreg());
     setzs(result);
     setpariflow(parity(result));
     setsubtract(false);
@@ -1753,12 +1820,22 @@ string BeeZ80::disassembleinstrindex(uint16_t addr, bool is_fd)
 	case 0x5C: instr << "LD E, " << index_reg << "H"; break;
 	case 0x5D: instr << "LD E, " << index_reg << "L"; break;
 	case 0x5E: instr << "LD E, (" << index_reg << " + " << hex << (int)imm_byte << ")"; break;
+	case 0x60: instr << "LD " << index_reg << "H, B"; break;
+	case 0x61: instr << "LD " << index_reg << "H, C"; break;
+	case 0x62: instr << "LD " << index_reg << "H, D"; break;
+	case 0x63: instr << "LD " << index_reg << "H, E"; break;
 	case 0x64: instr << "LD " << index_reg << "H, " << index_reg << "H"; break;
 	case 0x65: instr << "LD " << index_reg << "H, " << index_reg << "L"; break;
 	case 0x66: instr << "LD H, (" << index_reg << " + " << hex << (int)imm_byte << ")"; break;
+	case 0x67: instr << "LD " << index_reg << "H, A"; break;
+	case 0x68: instr << "LD " << index_reg << "L, B"; break;
+	case 0x69: instr << "LD " << index_reg << "L, C"; break;
+	case 0x6A: instr << "LD " << index_reg << "L, D"; break;
+	case 0x6B: instr << "LD " << index_reg << "L, E"; break;
 	case 0x6C: instr << "LD " << index_reg << "L, " << index_reg << "H"; break;
 	case 0x6D: instr << "LD " << index_reg << "L, " << index_reg << "L"; break;
 	case 0x6E: instr << "LD L, (" << index_reg << " + " << hex << (int)imm_byte << ")"; break;
+	case 0x6F: instr << "LD " << index_reg << "L, A"; break;
 	case 0x70: instr << "LD (" << index_reg << " + " << hex << (int)imm_byte << "), B"; break;
 	case 0x71: instr << "LD (" << index_reg << " + " << hex << (int)imm_byte << "), C"; break;
 	case 0x72: instr << "LD (" << index_reg << " + " << hex << (int)imm_byte << "), D"; break;
@@ -1799,7 +1876,7 @@ string BeeZ80::disassembleinstrindex(uint16_t addr, bool is_fd)
 	case 0xE5: instr << "PUSH " << index_reg; break;
 	case 0xE9: instr << "JP " << index_reg; break;
 	case 0xF9: instr << "LD SP, " << index_reg; break;
-	default: instr << "unknown " << index_reg << ", " << hex << (int)opcode; break;
+	default: instr << index_reg << ", " << disassembleinstr(addr); break;
     }
 
     return instr.str();
@@ -1944,6 +2021,8 @@ string BeeZ80::disassembleinstrextended(uint16_t addr)
 	case 0x4B: instr << "LD BC, (" << hex << (int)imm_word << ")"; break;
 	case 0x4C: instr << "NEG"; break;
 	case 0x4D: instr << "RETI"; break;
+	case 0x4E: instr << "IM 0/1"; break;
+	case 0x4F: instr << "LD R, A"; break;
 	case 0x50: instr << "IN D, (C)"; break;
 	case 0x51: instr << "OUT (C), D"; break;
 	case 0x52: instr << "SBC HL, DE"; break;
@@ -1951,6 +2030,7 @@ string BeeZ80::disassembleinstrextended(uint16_t addr)
 	case 0x54: instr << "NEG"; break;
 	case 0x55: instr << "RETN"; break;
 	case 0x56: instr << "IM 1"; break;
+	case 0x57: instr << "LD A, I"; break;
 	case 0x58: instr << "IN E, (C)"; break;
 	case 0x59: instr << "OUT (C), E"; break;
 	case 0x5A: instr << "ADC HL, DE"; break;
@@ -1958,6 +2038,7 @@ string BeeZ80::disassembleinstrextended(uint16_t addr)
 	case 0x5C: instr << "NEG"; break;
 	case 0x5D: instr << "RETN"; break;
 	case 0x5E: instr << "IM 2"; break;
+	case 0x5F: instr << "LD A, R"; break;
 	case 0x60: instr << "IN H, (C)"; break;
 	case 0x61: instr << "OUT (C), H"; break;
 	case 0x62: instr << "SBC HL, HL"; break;
@@ -1966,30 +2047,43 @@ string BeeZ80::disassembleinstrextended(uint16_t addr)
 	case 0x65: instr << "RETN"; break;
 	case 0x66: instr << "IM 0"; break;
 	case 0x67: instr << "RRD"; break;
+	case 0x68: instr << "IN L, (C)"; break;
 	case 0x69: instr << "OUT (C), L"; break;
 	case 0x6A: instr << "ADC HL, HL"; break;
 	case 0x6B: instr << "LD HL, (" << hex << (int)imm_word << ")"; break;
 	case 0x6C: instr << "NEG"; break;
 	case 0x6D: instr << "RETN"; break;
+	case 0x6E: instr << "IM 0/1"; break;
 	case 0x6F: instr << "RLD"; break;
+	case 0x70: instr << "IN (C)"; break;
 	case 0x71: instr << "OUT (C), 0"; break;
 	case 0x72: instr << "SBC HL, SP"; break;
 	case 0x73: instr << "LD (" << hex << (int)imm_word << "), SP"; break;
 	case 0x75: instr << "RETN"; break;
 	case 0x76: instr << "IM 1"; break;
+	case 0x78: instr << "IN A, (C)"; break;
 	case 0x79: instr << "OUT (C), A"; break;
 	case 0x7A: instr << "ADC HL, SP"; break;
 	case 0x7B: instr << "LD SP, " << hex << (int)imm_word; break;
+	case 0x7C: instr << "NEG"; break;
 	case 0x7D: instr << "RETN"; break;
 	case 0x7E: instr << "IM 2"; break;
 	case 0xA0: instr << "LDI"; break;
 	case 0xA1: instr << "CPI"; break;
+	case 0xA2: instr << "INI"; break;
 	case 0xA3: instr << "OUTI"; break;
+	case 0xA8: instr << "LDD"; break;
 	case 0xA9: instr << "CPD"; break;
+	case 0xAA: instr << "IND"; break;
+	case 0xAB: instr << "OUTD"; break;
 	case 0xB0: instr << "LDIR"; break;
 	case 0xB1: instr << "CPIR"; break;
+	case 0xB2: instr << "INIR"; break;
 	case 0xB3: instr << "OTIR"; break;
+	case 0xB8: instr << "LDDR"; break;
 	case 0xB9: instr << "CPDR"; break;
+	case 0xBA: instr << "INDR"; break;
+	case 0xBB: instr << "OTDR"; break;
 	default: instr << "unknown extd, " << hex << (int)opcode; break;
     }
 
@@ -2635,7 +2729,7 @@ int BeeZ80::executenextindexopcode(uint8_t opcode, bool is_fd)
 	case 0xE9: pc = indexreg.getreg(); cycle_count = 8; break; // JP IX/IY
 	case 0xF9: sp = indexreg.getreg(); cycle_count = 10; break; // LD SP, IX/IY
 	// Any other DD/FD opcode behaves as a non-prefixed opcode
-	default: cycle_count = executenextopcode(opcode); break;
+	default: cycle_count = (4 + executenextopcode(opcode)); break;
     }
 
     return cycle_count;
@@ -2675,6 +2769,7 @@ int BeeZ80::executenextextendedopcode(uint8_t opcode)
 	break; // LD BC, (imm16)
 	case 0x4C: cycle_count = neg(); break; // NEG
 	case 0x4D: ret(); cycle_count = 14; break; // RETI
+	case 0x4E: interrupt_mode = 0; cycle_count = 8; break; // IM 0
 	case 0x4F: refresh = af.gethi(); cycle_count = 9; break; // LD R, A
 	case 0x50: de.sethi(portInC()); cycle_count = 12; break; // IN D, (C)
 	case 0x51: portOut(bc.getreg(), de.gethi()); cycle_count = 12; break; // OUT (C), D
@@ -2754,6 +2849,7 @@ int BeeZ80::executenextextendedopcode(uint8_t opcode)
 	break; // LD HL, (imm16)
 	case 0x6C: cycle_count = neg(); break; // NEG
 	case 0x6D: cycle_count = retn(); break; // RETN
+	case 0x6E: interrupt_mode = 0; cycle_count = 8; break; // IM 0
 	case 0x6F: cycle_count = rld(); break; // RLD
 	case 0x70: portInC(); cycle_count = 12; break; // IN (C)
 	case 0x71: portOut(bc.getreg(), 0); cycle_count = 12; break; // OUT (C), 0
@@ -2797,15 +2893,21 @@ int BeeZ80::executenextextendedopcode(uint8_t opcode)
 	case 0x7E: interrupt_mode = 2; cycle_count = 8; break; // IM 2
 	case 0xA0: cycle_count = ldi(); break; // LDI
 	case 0xA1: cycle_count = cpi(); break; // CPI
+	case 0xA2: cycle_count = ini(); break; // INI
 	case 0xA3: cycle_count = outi(); break; // OUTI
 	case 0xA8: cycle_count = ldd(); break; // LDD
 	case 0xA9: cycle_count = cpd(); break; // CPD
+	case 0xAA: cycle_count = ind(); break; // IND
+	case 0xAB: cycle_count = outd(); break; // OUTD
 	case 0xB0: cycle_count = ldir(); break; // LDIR
 	case 0xB1: cycle_count = cpir(); break; // CPIR
+	case 0xB2: cycle_count = inir(); break; // INIR
 	case 0xB3: cycle_count = otir(); break; // OTIR
 	case 0xB8: cycle_count = lddr(); break; // LDDR
 	case 0xB9: cycle_count = cpdr(); break; // CPDR
-	default: unrecognizedprefixopcode(0xED, opcode); break;
+	case 0xBA: cycle_count = indr(); break; // INDR
+	case 0xBB: cycle_count = otdr(); break; // OTDR
+	default: cycle_count = 8; break;
     }
 
     return cycle_count;
