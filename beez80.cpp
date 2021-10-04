@@ -2431,6 +2431,7 @@ int BeeZ80::executenextopcode(uint8_t opcode)
 	{
 	    interrupt_one = false;
 	    interrupt_two = false;
+	    cycle_count = 4;
 	}
 	break; // DI
 	case 0xF4: cycle_count = call(!issign()); break; // CALL P, imm16
@@ -2440,7 +2441,7 @@ int BeeZ80::executenextopcode(uint8_t opcode)
 	case 0xF8: cycle_count = ret_cond(issign()); break; // RET M
 	case 0xF9: sp = hl.getreg(); cycle_count = 6; break; // LD SP, HL
 	case 0xFA: cycle_count = jump(getimmWord(), issign()); break; // JP M, imm16
-	case 0xFB: interrupt_delay = true; break; // EI
+	case 0xFB: interrupt_delay = true; cycle_count = 4; break; // EI
 	case 0xFC: cycle_count = call(issign()); break; // CALL M, imm16
 	case 0xFD: cycle_count = executenextindexopcode(getOpcode(), true); break; // IY opcodes
 	case 0xFE: arith_cmp(getimmByte()); cycle_count = 7; break; // CP imm8
@@ -2793,7 +2794,7 @@ int BeeZ80::executenextextendedopcode(uint8_t opcode)
 	    setsubtract(false);
 	    setpariflow(interrupt_two);
 	    af.sethi(res);
-	    cycle_count = 9; break;
+	    cycle_count = 9;
 	}
 	break; // LD A, I
 	case 0x58: de.setlo(portInC()); cycle_count = 12; break; // IN E, (C)
@@ -2818,7 +2819,7 @@ int BeeZ80::executenextextendedopcode(uint8_t opcode)
 	    setsubtract(false);
 	    setpariflow(interrupt_two);
 	    af.sethi(res);
-	    cycle_count = 9; break;
+	    cycle_count = 9;
 	}
 	break; // LD A, R
 	case 0x60: hl.sethi(portInC()); cycle_count = 12; break; // IN H, (C)
