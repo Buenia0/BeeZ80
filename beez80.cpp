@@ -137,7 +137,7 @@ void BeeZ80::init(uint16_t init_pc)
 
     if (m1_prescaler == -1)
     {
-	m1_prescaler = 1;
+	m1_prescaler = 0;
     }
 
     // Notify the user that the emulated Z80 has been initialized
@@ -168,7 +168,7 @@ void BeeZ80::reset(uint16_t init_pc)
 void BeeZ80::set_prescalers(int cycle_pres, int m1_pres)
 {
     cycles_prescaler = max(cycle_pres, 1);
-    m1_prescaler = max(m1_pres, 1);
+    m1_prescaler = max(m1_pres, 0);
 }
 
 // Set callback interface

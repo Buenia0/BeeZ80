@@ -37,15 +37,21 @@ Compiler: GCC or Clang. You only need one of those two:
 GCC 10.2.0+ (earlier versions not tested):
 
 Debian (not tested): `sudo apt-get install build-essential`
+
 Arch (not tested): `sudo pacman -S base-devel`
+
 Fedora (not tested): `sudo dnf install gcc-c++`
+
 OpenSUSE (not tested): `sudo zypper in gcc-c++`
 
 Clang (not tested):
 
 Debian: `sudo apt-get install clang clang-format libc++-dev` (in some distros, clang-5.0)
+
 Arch: `pacman -S clang`, `libc++` is in the AUR. Use pacaur or yaourt to install it.
+
 Fedora: `dnf install clang libcxx-devel`
+
 OpenSUSE: `zypper in clang`
 
 Other core dependencies:
@@ -53,8 +59,11 @@ Other core dependencies:
 Git (if not installed already) and CMake 3.1+:
 
 Debian (not tested): `sudo apt-get install git cmake`
+
 Arch (not tested): `sudo pacman -S git`
+
 Fedora (not tested): `sudo dnf install git cmake`
+
 OpenSUSE (not tested): `sudo zypper in git cmake extra-cmake-modules`
 
 Step 2: Clone the repository:
