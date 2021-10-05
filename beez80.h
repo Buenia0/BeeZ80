@@ -146,6 +146,9 @@ namespace beez80
 	    // Resets the emulated CPU
 	    void reset(uint16_t init_pc = 0);
 
+	    // Sets the cycle prescalers (for both regular and M1 cycles)
+	    void set_prescalers(int cycle_pres, int m1_pres);
+
 	    // Generates an NMI interrupt
 	    void generate_nmi();
 
@@ -167,6 +170,12 @@ namespace beez80
 	private:
 	    // Private declaration of interface class
 	    BeeZ80Interface *inter = NULL;
+
+	    int cycles_prescaler = -1;
+	    int m1_prescaler = -1;
+
+	    // Helper function for fetching M1 cycles
+	    int get_m1_cycles(uint8_t opcode);
 
 	    // Logic for interrupts
 	    int process_interrupts();

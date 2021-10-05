@@ -130,6 +130,16 @@ void BeeZ80::init(uint16_t init_pc)
     pc = init_pc;
     mem_ptr = 0;
 
+    if (cycles_prescaler == -1)
+    {
+	cycles_prescaler = 1;
+    }
+
+    if (m1_prescaler == -1)
+    {
+	m1_prescaler = 1;
+    }
+
     // Notify the user that the emulated Z80 has been initialized
     cout << "BeeZ80::Initialized" << endl;
 }
@@ -154,6 +164,13 @@ void BeeZ80::reset(uint16_t init_pc)
     init(init_pc);
 }
 
+// Sets the cycle prescalers
+void BeeZ80::set_prescalers(int cycle_pres, int m1_pres)
+{
+    cycles_prescaler = max(cycle_pres, 1);
+    m1_prescaler = max(m1_pres, 1);
+}
+
 // Set callback interface
 void BeeZ80::setinterface(BeeZ80Interface *cb)
 {
@@ -168,21 +185,32 @@ void BeeZ80::setinterface(BeeZ80Interface *cb)
     inter = cb;
 }
 
+int BeeZ80::get_m1_cycles(uint8_t opcode)
+{
+    if ((opcode == 0xCB) || (opcode == 0xDD) || (opcode == 0xFD) || (opcode == 0xED))
+    {
+	return 2;
+    }
+
+    return 1;
+}
+
 // Executes a single instruction and returns its cycle count
 int BeeZ80::runinstruction()
 {
-    int cycles = 0;
-    if (is_halted)
+    // Execute NOPs if CPU is halted
+    uint8_t opcode = 0x00;
+
+    if (!is_halted)
     {
-	// Execute NOPs if CPU is halted
-	cycles = executenextopcode(0x00);
-    }
-    else
-    {
-	// Execute next instruction
-	cycles = executenextopcode(getOpcode());
+	opcode = getOpcode();
     }
 
+    // Execute next instruction, taking M1 wait cycles into account
+    int op_cycles = executenextopcode(opcode);
+    int m1_cycles = get_m1_cycles(opcode);
+
+    int cycles = ((op_cycles * cycles_prescaler) + (m1_cycles * m1_prescaler));
     cycles += process_interrupts();
 
     return cycles;
@@ -221,15 +249,17 @@ int BeeZ80::process_interrupts()
 	{
 	    case 0:
 	    {
-		executenextopcode(interrupt_data);
-		return 11;
+		int op_cycles = executenextopcode(interrupt_data);
+		int m1_cycles = get_m1_cycles(interrupt_data);
+		int cycles = ((op_cycles * cycles_prescaler) + (m1_cycles * m1_prescaler));
+		return (cycles + (2 * cycles_prescaler));
 	    }
 	    break;
 	    case 1:
 	    {
 		push_stack(pc);
 		jump(0x38);
-		return 13;
+		return ((11 * cycles_prescaler) + m1_prescaler + (2 * cycles_prescaler));
 	    }
 	    break;
 	    case 2:
@@ -237,7 +267,7 @@ int BeeZ80::process_interrupts()
 		uint16_t int_addr = ((interrupt << 8) | interrupt_data);
 		push_stack(pc);
 		jump(readWord(int_addr));
-		return 19;
+		return ((17 * cycles_prescaler) + m1_prescaler + (2 * cycles_prescaler));
 	    }
 	    break;
 	}

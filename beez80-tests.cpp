@@ -242,9 +242,9 @@ void run_test(BeeZ80 &core, string filename, uint64_t cycles_expected)
 int main(int argc, char *argv[])
 {
     BeeZ80 core;
-    run_test(core, "tests/TEST.COM", 300LU); // barebones demo program to test system functionality
-    run_test(core, "tests/PRELIM.COM", 8873LU); // ZEXALL Preliminary Exerciser
-    run_test(core, "tests/ZEXDOC.COM", 46734998376LU); // ZEXDOC Exerciser
-    run_test(core, "tests/ZEXALL.COM", 46734998376LU); // ZEXALL Exerciser
+    run_test(core, "tests/TEST.COM", 332LU); // barebones demo program to test system functionality
+    run_test(core, "tests/PRELIM.COM", 9816LU); // ZEXALL Preliminary Exerciser
+    run_test(core, "tests/ZEXDOC.COM", 52515206569LU); // ZEXDOC Exerciser
+    run_test(core, "tests/ZEXALL.COM", 52515206569LU); // ZEXALL Exerciser
     return 0;
 }
