@@ -147,13 +147,7 @@ void BeeZ80::init(uint16_t init_pc)
 // Shutdown the emulated Zilog Z80
 void BeeZ80::shutdown()
 {
-    // Set the interface pointer to NULL if we haven't done so already
-    if (inter != NULL)
-    {
-	inter = NULL;
-    }
-
-    // Notify the user that the emulated 8080 has been shut down
+    // Notify the user that the emulated Z80 has been shut down
     cout << "BeeZ80::Shutting down..." << endl;
 }
 
