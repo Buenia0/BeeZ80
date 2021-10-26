@@ -112,6 +112,8 @@ void BeeZ80::init(uint16_t init_pc)
     interrupt_mode = 0;
     interrupt_one = false;
     interrupt_two = false;
+    is_int_pending = false;
+    is_nmi_pending = false;
 
     // Halted flag
     is_halted = false;
@@ -309,6 +311,10 @@ void BeeZ80::debugoutput(bool printdisassembly)
     cout << "Interrupt mode (IM): " << dec << (int)interrupt_mode << endl;
     cout << "IFF1: " << dec << (int)interrupt_one << endl;
     cout << "IFF2: " << dec << (int)interrupt_two << endl;
+    string irq_pending = (is_int_pending) ? "Yes" : "No";
+    cout << "IRQ pending: " << irq_pending << endl;
+    string nmi_pending = (is_nmi_pending) ? "Yes" : "No";
+    cout << "NMI pending: " << nmi_pending << endl;
     cout << "HALT: " << dec << (int)is_halted << endl;
 
     if (printdisassembly)
