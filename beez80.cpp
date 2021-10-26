@@ -279,9 +279,9 @@ void BeeZ80::generate_nmi()
 }
 
 // Generates a regular interrupt
-void BeeZ80::generate_interrupt(uint8_t data)
+void BeeZ80::generate_interrupt(uint8_t data, bool is_pending)
 {
-    is_int_pending = true;
+    is_int_pending = is_pending;
     interrupt_data = data;
 }
 

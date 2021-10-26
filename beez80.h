@@ -153,7 +153,7 @@ namespace beez80
 	    void generate_nmi();
 
 	    // Generates a regular interrupt
-	    void generate_interrupt(uint8_t data);
+	    void generate_interrupt(uint8_t data, bool is_pending = true);
 
 	    // Sets a custom interface for the emulated Zilog Z80
 	    void setinterface(BeeZ80Interface *cb);
