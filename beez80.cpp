@@ -315,6 +315,7 @@ void BeeZ80::debugoutput(bool printdisassembly)
     cout << "IRQ pending: " << irq_pending << endl;
     string nmi_pending = (is_nmi_pending) ? "Yes" : "No";
     cout << "NMI pending: " << nmi_pending << endl;
+    cout << "IRQ data: " << hex << int(interrupt_data) << endl;
     cout << "HALT: " << dec << (int)is_halted << endl;
 
     if (printdisassembly)
