@@ -161,6 +161,20 @@ class Interface : public BeeZ80Interface
 	    return ram[addr];
 	}
 
+	// Optional function, set the return value to false
+	// if the opcode space is the same as the program space
+	bool isSeperateOps()
+	{
+	    return true;
+	}
+
+	// Opcode read request per 1 byte from CPU
+	// (optional, define this function if using seperate opcode spaces)
+	uint8_t readOpcode(uint16_t addr)
+	{
+	    return ram[addr];
+	}
+
 	// Memory write request per 1 byte from CPU
 	void writeByte(uint16_t addr, uint8_t val)
 	{
@@ -191,6 +205,14 @@ BeeZ80 core;
 
 // Set hardware abstraction interface
 core.setinterface(&interface);
+
+// (Optional) Set cycle prescalers for both regular and M1
+// (i.e. instruction fetch) cycles
+
+int num_instr_cycles = 1;
+int num_fetch_cycles = 0;
+
+core.set_prescalers(num_instr_cycles, num_fetch_cycles);
 ```
 
 Step 4: Initialize the processor:
@@ -214,8 +236,32 @@ int instr_cycles = core.runinstruction();
 If you want to generate an interrupt:
 
 ```
-// This function accepts a valid Zilog Z80 opcode as its sole argument
-core.setinterrupt(0xFF); // 0xFF = RST 38H
+// This function accepts a valid Zilog Z80 opcode as its first argument
+// The second argument can be used to assert or clear the IRQ line
+
+// Generate IRQ
+core.generate_interrupt(0xFF); // 0xFF = RST 38H
+
+// Generate IRQ and assert IRQ line
+core.generate_interrupt(0xFF, true); // 0xFF = RST 38H
+
+// Clear IRQ line
+core.generate_interrupt(0xFF, false);
+```
+
+If you want to generate an NMI:
+
+```
+// The sole argument of this function can be used to assert or clear the NMI line
+
+// Generate NMI
+core.generate_nmi();
+
+// Assert NMI line
+core.generate_nmi(true);
+
+// Clear NMI line
+core.generate_nmi(false);
 ```
 
 If you want to reset the CPU:

@@ -273,9 +273,9 @@ int BeeZ80::process_interrupts()
 }
 
 // Generates an NMI
-void BeeZ80::generate_nmi()
+void BeeZ80::generate_nmi(bool is_pending)
 {
-    is_nmi_pending = true;
+    is_nmi_pending = is_pending;
 }
 
 // Generates a regular interrupt

@@ -150,7 +150,7 @@ namespace beez80
 	    void set_prescalers(int cycle_pres, int m1_pres);
 
 	    // Generates an NMI interrupt
-	    void generate_nmi();
+	    void generate_nmi(bool is_pending = true);
 
 	    // Generates a regular interrupt
 	    void generate_interrupt(uint8_t data, bool is_pending = true);
