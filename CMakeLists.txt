@@ -9,8 +9,6 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 option(BUILD_Z80_TESTS "Enables the BeeZ80 test suite." OFF)
 
-set(BEEZ80_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
-
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
 endif()
@@ -24,15 +22,11 @@ set(BEEZ80_HEADER
 set(BEEZ80_SOURCE
 	beez80.cpp)
 
-add_library(beez80 ${BEEZ80_SOURCE} ${BEEZ80_HEADER})
-target_include_directories(beez80 PUBLIC ${BEEZ80_INCLUDE_DIR})
-target_compile_definitions(beez80 PRIVATE BEEZ80_STATIC=1 _CRT_SECURE_NO_WARNINGS=1)
-add_library(libbeez80 ALIAS beez80)
+add_subdirectory(BeeZ80)
 
 if (BUILD_Z80_TESTS STREQUAL "ON")
     project(beez80-tests)
     add_executable(beez80-tests ${BEEZ80_TEST_SOURCES})
-    include_directories(beez80-tests ${BEEZ80_INCLUDE_DIR})
     target_link_libraries(beez80-tests libbeez80)
 endif()
 

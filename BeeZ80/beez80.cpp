@@ -1,6 +1,6 @@
 /*
     This file is part of the BeeZ80 engine.
-    Copyright (C) 2021 BueniaDev.
+    Copyright (C) 2022 BueniaDev.
 
     BeeZ80 is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
